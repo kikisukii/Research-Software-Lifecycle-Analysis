@@ -1,5 +1,25 @@
-# created by virtual.env automatically
-
+# Virtual envs
 .venv/
-.env
+venv/
+env/
+.venv/**
+venv/**
+
+# IDE
 .idea/
+.vscode/
+
+# Python build/cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Secrets
+.env
+
+# Generated data
+data/_gitcache/
+data/*.csv
