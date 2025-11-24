@@ -1,0 +1,63 @@
+{
+  "stamp": "20251114_004622",
+  "folds": 5,
+  "k_candidates": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "explained_variance_threshold": 0.9,
+  "pc1_dominance_threshold": 0.7,
+  "pc1_issues_loading_min": 0.7,
+  "suggested_k_by_metrics": 6,
+  "table": [
+    {
+      "k": 2,
+      "silhouette_median": 0.38910059161858307,
+      "silhouette_p25": 0.3887481798997453,
+      "silhouette_p75": 0.3957628007749768,
+      "ch_median": 55827.846024146544,
+      "ncomp_median": 3.0,
+      "whiten_ratio": 0.0
+    },
+    {
+      "k": 3,
+      "silhouette_median": 0.4147737749649668,
+      "silhouette_p25": 0.4113582144593054,
+      "silhouette_p75": 0.4155877885579526,
+      "ch_median": 57505.58717271995,
+      "ncomp_median": 3.0,
+      "whiten_ratio": 0.0
+    },
+    {
+      "k": 4,
+      "silhouette_median": 0.4194670005783925,
+      "silhouette_p25": 0.41769704470693453,
+      "silhouette_p75": 0.4246944293194993,
+      "ch_median": 57476.468295608596,
+      "ncomp_median": 3.0,
+      "whiten_ratio": 0.0
+    },
+    {
+      "k": 5,
+      "silhouette_median": 0.42061394679845293,
+      "silhouette_p25": 0.4198114904067233,
+      "silhouette_p75": 0.42596242099004855,
+      "ch_median": 60343.98609788597,
+      "ncomp_median": 3.0,
+      "whiten_ratio": 0.0
+    },
+    {
+      "k": 6,
+      "silhouette_median": 0.46241478734854685,
+      "silhouette_p25": 0.46025485940629446,
+      "silhouette_p75": 0.46568840713945747,
+      "ch_median": 64655.00400804742,
+      "ncomp_median": 3.0,
+      "whiten_ratio": 0.0
+    }
+  ],
+  "note": "Manual selection required. This is only a data-driven suggestion."
+}

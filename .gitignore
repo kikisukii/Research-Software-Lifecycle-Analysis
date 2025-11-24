@@ -1,25 +1,36 @@
+# =========================
 # Virtual envs
+# =========================
 .venv/
 venv/
 env/
-.venv/**
-venv/**
 
-# IDE
+# =========================
+# IDE / OS 杂项
+# =========================
 .idea/
 .vscode/
+.DS_Store
+Thumbs.db
 
-# Python build/cache
+# =========================
+# Python 构建 / 缓存
+# =========================
 __pycache__/
 *.py[cod]
 *.egg-info/
+.eggs/
 dist/
 build/
-.eggs/
+.ipynb_checkpoints/
+*.log
 
-# Secrets
+# =========================
+# Secrets（包含你的 token）
+# =========================
 .env
 
-# Generated data
-data/_gitcache/
-data/*.csv
+# =========================
+# git cache 目录（体积太大）
+# =========================
+**/_gitcache/

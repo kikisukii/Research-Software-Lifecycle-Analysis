@@ -1,0 +1,7 @@
+cluster,n_windows,has_release_8w_rate,zero_8w_rate,cluster_rank_by_commits,commits_8w_sum_p50,commits_8w_sum_p25,commits_8w_sum_p75,contributors_8w_unique_p50,contributors_8w_unique_p25,contributors_8w_unique_p75,issues_closed_8w_count_p50,issues_closed_8w_count_p25,issues_closed_8w_count_p75,releases_8w_count_p50,releases_8w_count_p25,releases_8w_count_p75,stage_name_suggested,stage_name,dur_p25_weeks,dur_p50_weeks,dur_p75_weeks
+4,12975,0.03252408477842,0.0,0,129.0,71.0,262.0,6.0,5.0,11.0,0.0,0.0,0.0,0.0,0.0,0.0,Peak,Rising-Dev,2.0,4.0,9.0
+3,8508,1.0,0.0,1,82.0,42.0,163.0,5.0,3.0,8.0,13.0,7.0,24.0,2.0,1.0,3.0,Peak,Peak-Release,3.0,8.0,9.0
+0,12259,0.0,0.0,2,59.0,28.0,124.0,4.0,3.0,7.0,9.0,5.0,16.0,0.0,0.0,0.0,Rising,Maintenance/Triage,2.0,6.0,10.0
+5,12577,1.0,0.0,3,14.0,7.0,30.0,2.0,1.0,3.0,1.0,0.0,2.0,1.0,1.0,2.0,Cooling,Cooling-Release,3.0,8.0,8.0
+2,31629,0.0,0.0,4,11.0,5.0,23.0,2.0,1.0,2.0,0.0,0.0,1.0,0.0,0.0,0.0,Low,Low,2.0,6.0,10.0
+1,26354,0.0042877741519313,0.6894589056689686,5,0.0,0.0,1.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,Low,Zero/Low,3.0,8.0,17.0
