@@ -5,6 +5,8 @@
 .venv/
 venv/
 env/
+img/
+
 
 # Build and Cache files
 __pycache__/
