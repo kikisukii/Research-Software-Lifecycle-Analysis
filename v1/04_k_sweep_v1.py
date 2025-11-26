@@ -316,7 +316,7 @@ def main():
     print(f"[OK] Saved: {grid_csv} | Rows: {len(grid_df):,}")
 
     print("\n[DONE] Step 04 complete: Fold assignment + Grid scoring generated.")
-    print("       Next Step: Select optimal (K*, Alpha*) and proceed to 05_a/b.")
+    print("       Next Step: Select optimal (K*, Alpha*) and proceed to 05_a_kmeans/b.")
 
 
 if __name__ == "__main__":

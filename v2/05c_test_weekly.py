@@ -16,7 +16,7 @@ from matplotlib.patches import Patch
 # ---------- paths ----------
 THIS = Path(__file__).resolve()
 ROOT = THIS.parent.parent
-D05_B = ROOT / "v2_data" / "05_b"
+D05_B = ROOT / "v2_data" / "05_b_apply"
 # 输出到专门的测试文件夹，以免混淆
 D05_C = ROOT / "v2_data" / "05_c_weekly_test"
 
@@ -63,7 +63,7 @@ def infer_latest_assignments() -> Path:
         return cands_dead[-1]
     cands_main = sorted(D05_B.glob("05b_assignments_with_stage_v2_*.csv"))
     if not cands_main:
-        raise FileNotFoundError("No 05b assignments found under v2_data/05_b/")
+        raise FileNotFoundError("No 05b assignments found under v2_data/05_b_apply/")
     return cands_main[-1]
 
 

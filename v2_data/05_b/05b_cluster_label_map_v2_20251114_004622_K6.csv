@@ -1,7 +1,0 @@
-cluster,stage_name,n_windows,commits_8w_sum_p50
-1,Internal Development,15195,108.0
-3,Peak Activity,8486,83.0
-5,Maintenance,12989,56.0
-2,Release Phase,12600,14.0
-4,Baseline,35628,7.0
-0,Dormant,18991,0.0

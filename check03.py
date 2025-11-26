@@ -5,11 +5,11 @@ import re
 
 ROOT = Path(__file__).resolve().parent
 D02 = ROOT / "v2_data" / "02_dat"
-D03 = ROOT / "v2_data" / "03_dat"
+D03 = ROOT / "v2_data" / "03_features"
 
 # auto-detect STAMP from features file
 cands = sorted(D03.glob("03_features_weekly_v2_*.csv"))
-assert cands, "No features file found in v2_data/03_dat/"
+assert cands, "No features file found in v2_data/03_features/"
 m = re.search(r"_(\d{8}_\d{6})\.csv$", cands[-1].name)
 STAMP = m.group(1)
 

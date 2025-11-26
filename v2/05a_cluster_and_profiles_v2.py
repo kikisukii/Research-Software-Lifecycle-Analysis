@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 v2/05a_cluster_and_profiles_v2.py — Final clustering (K=6) + profiles.
-Writes to v2_data/05_a/.
+Writes to v2_data/05_a_kmeans/.
 
 Change in this version:
   - Append per-cluster PCA centroids to the profiles CSV as columns:
@@ -13,10 +13,10 @@ Pipeline:
   - Preprocess: log1p -> StandardScaler -> PCA (>=90% cumulative EVR; fail-safe whiten)
   - Fit KMeans in PCA space (K=6)
   - Save:
-    1) v2_data/05_a/05a_cluster_assignments_v2_<STAMP>_K6.csv
-    2) v2_data/05_a/05a_cluster_profiles_v2_<STAMP>_K6.csv
-    3) v2_data/05_a/05a_pca_model_meta_v2_<STAMP>_K6.json
-    4) v2_data/05_a/05a_kmeans_meta_v2_<STAMP>_K6.json
+    1) v2_data/05_a_kmeans/05a_cluster_assignments_v2_<STAMP>_K6.csv
+    2) v2_data/05_a_kmeans/05a_cluster_profiles_v2_<STAMP>_K6.csv
+    3) v2_data/05_a_kmeans/05a_pca_model_meta_v2_<STAMP>_K6.json
+    4) v2_data/05_a_kmeans/05a_kmeans_meta_v2_<STAMP>_K6.json
 """
 
 from __future__ import annotations
@@ -32,14 +32,14 @@ from sklearn.cluster import KMeans
 # ---------------- paths & stamp ----------------
 THIS = Path(__file__).resolve()
 ROOT = THIS.parent.parent
-D03   = ROOT / "v2_data" / "03_dat"
-D05_A = ROOT / "v2_data" / "05_a"   # <= keep as requested
+D03   = ROOT / "v2_data" / "03_features"
+D05_A = ROOT / "v2_data" / "05_a_kmeans"   # <= keep as requested
 D05_A.mkdir(parents=True, exist_ok=True)
 
 def latest_stamp_from_03(d03: Path) -> str:
     cands = sorted(d03.glob("03_features_weekly_v2_*.csv"))
     if not cands:
-        raise FileNotFoundError("No 03_features_weekly_v2_*.csv under v2_data/03_dat/")
+        raise FileNotFoundError("No 03_features_weekly_v2_*.csv under v2_data/03_features/")
     m = re.search(r"_(\d{8}_\d{6})\.csv$", cands[-1].name)
     if not m:
         raise RuntimeError(f"Cannot parse STAMP from filename: {cands[-1].name}")

@@ -13,13 +13,13 @@ import numpy as np
 
 # --- 配置：请确认你的文件名 ---
 
-SCRIPT_8W = "05c_plot.py"
+SCRIPT_8W = "05c_plot_v2_8w.py"
 SCRIPT_WEEKLY = "05c_test_weekly.py"
 
 # --- 路径 ---
 THIS = Path(__file__).resolve()
 DIR_V2 = THIS.parent
-DATA_DIR = DIR_V2.parent / "v2_data" / "05_b"
+DATA_DIR = DIR_V2.parent / "v2_data" / "05_b_apply"
 
 
 def get_latest_data():

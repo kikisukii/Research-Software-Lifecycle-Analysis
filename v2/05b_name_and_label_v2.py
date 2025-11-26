@@ -15,16 +15,16 @@ import pandas as pd
 # ---------------- paths ----------------
 THIS = Path(__file__).resolve()
 ROOT = THIS.parent.parent
-D03 = ROOT / "v2_data" / "03_dat"
-D05_A = ROOT / "v2_data" / "05_a"
-D05_B = ROOT / "v2_data" / "05_b"
+D03 = ROOT / "v2_data" / "03_features"
+D05_A = ROOT / "v2_data" / "05_a_kmeans"
+D05_B = ROOT / "v2_data" / "05_b_apply"
 D05_B.mkdir(parents=True, exist_ok=True)
 
 
 def latest_stamp_from_05a(d: Path):
     cands = sorted(d.glob("05a_cluster_assignments_v2_*_K*.csv"))
     if not cands:
-        raise FileNotFoundError("No 05a assignments under v2_data/05_a/")
+        raise FileNotFoundError("No 05a assignments under v2_data/05_a_kmeans/")
     m = re.search(r"_v2_(\d{8}_\d{6})_K(\d+)\.csv$", cands[-1].name)
     if not m:
         raise RuntimeError(f"Cannot parse STAMP/K from: {cands[-1].name}")

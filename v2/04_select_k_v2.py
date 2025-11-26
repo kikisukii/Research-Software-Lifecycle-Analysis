@@ -4,16 +4,16 @@ v2/04_select_k_v2.py — K selection only (no clustering) + ONE PCA CSV + progre
 
 This parameterized version keeps all original defaults intact:
 - By default it auto-picks the latest 03 STAMP, evaluates K=2..6,
-  and writes outputs to v2_data/04_dat/ with the same filenames as before.
+  and writes outputs to v2_data/04_cluster/ with the same filenames as before.
 
 You can also extend the experiment AFTER the 2..6 run, e.g., test K=7..10
-and save into v2_data/04_dat/tuning_k/ WITHOUT overwriting previous results.
+and save into v2_data/04_cluster/tuning_k/ WITHOUT overwriting previous results.
 See "CLI examples" below.
 
 Outputs:
-  1) v2_data/04_dat[/...]/04_kselect_scores_v2_<STAMP>[<outtag>].csv
-  2) v2_data/04_dat[/...]/04_kselect_summary_v2_<STAMP>[<outtag>].json
-  3) v2_data/04_dat[/...]/04_pca_all_v2_<STAMP>[<outtag>].csv
+  1) v2_data/04_cluster[/...]/04_kselect_scores_v2_<STAMP>[<outtag>].csv
+  2) v2_data/04_cluster[/...]/04_kselect_summary_v2_<STAMP>[<outtag>].json
+  3) v2_data/04_cluster[/...]/04_pca_all_v2_<STAMP>[<outtag>].csv
      (ONE table with all PCA details: folds + full ref)
 
 Design (agreed):
@@ -32,10 +32,10 @@ CLI examples (PyCharm Parameters or shell):
   # -> no parameters needed
 
   # Extend AFTER 2..6: run only K=7..10 and write into a subfolder
-  --kmin 7 --kmax 10 --outdir v2_data/04_dat/tuning_k --outtag _k7_10_try1
+  --kmin 7 --kmax 10 --outdir v2_data/04_cluster/tuning_k --outtag _k7_10_try1
 
   # (Optional) Force a specific STAMP (if you duplicated 03 features with a new timestamp)
-  --stamp 20251124_170000 --kmin 7 --kmax 10 --outdir v2_data/04_dat/tuning_k --outtag _k7_10_try1
+  --stamp 20251124_170000 --kmin 7 --kmax 10 --outdir v2_data/04_cluster/tuning_k --outtag _k7_10_try1
 """
 
 from __future__ import annotations
@@ -92,13 +92,13 @@ class _ManualBar:
 # ---------------- paths & stamp ----------------
 THIS = Path(__file__).resolve()
 ROOT = THIS.parent.parent
-D03  = ROOT / "v2_data" / "03_dat"
-D04_DEFAULT  = ROOT / "v2_data" / "04_dat"
+D03  = ROOT / "v2_data" / "03_features"
+D04_DEFAULT  = ROOT / "v2_data" / "04_cluster"
 
 def latest_stamp_from_03(d03: Path) -> str:
     cands = sorted(d03.glob("03_features_weekly_v2_*.csv"))
     if not cands:
-        raise FileNotFoundError("No 03_features_weekly_v2_*.csv under v2_data/03_dat/")
+        raise FileNotFoundError("No 03_features_weekly_v2_*.csv under v2_data/03_features/")
     m = re.search(r"_(\d{8}_\d{6})\.csv$", cands[-1].name)
     if not m:
         raise RuntimeError(f"Cannot parse STAMP from filename: {cands[-1].name}")
@@ -109,7 +109,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--stamp", type=str, default=None, help="Override STAMP; by default use latest 03 STAMP.")
 ap.add_argument("--kmin", type=int, default=None, help="If set with --kmax, override KS to range(kmin..kmax).")
 ap.add_argument("--kmax", type=int, default=None, help="If set with --kmin, override KS to range(kmin..kmax).")
-ap.add_argument("--outdir", type=str, default=None, help="Output directory; default v2_data/04_dat/")
+ap.add_argument("--outdir", type=str, default=None, help="Output directory; default v2_data/04_cluster/")
 ap.add_argument("--outtag", type=str, default="", help="Optional tag appended to filenames to avoid overwrite.")
 ap.add_argument("--folds", type=int, default=None, help="Override number of GroupKFold splits (default 5).")
 ap.add_argument("--seed", type=int, default=None, help="Override RANDOM_STATE for KMeans/PCA (default 123).")

@@ -15,9 +15,9 @@ Key decisions:
 - Zero/Low windows included; dead_flag (24→25 zero-commit weeks) for reporting only.
 
 Outputs:
-  - v2_data/03_dat/03_features_weekly_v2_<STAMP>.csv
-  - v2_data/03_dat/03_features_qc_v2_<STAMP>.json
-  - v2_data/03_dat/03_features_dropped_v2_<STAMP>.csv
+  - v2_data/03_features/03_features_weekly_v2_<STAMP>.csv
+  - v2_data/03_features/03_features_qc_v2_<STAMP>.json
+  - v2_data/03_features/03_features_dropped_v2_<STAMP>.csv
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ THIS_FILE = Path(__file__).resolve()
 THIS_DIR  = THIS_FILE.parent
 DATA_ROOT = (THIS_DIR.parent / "v2_data").resolve()
 D02 = DATA_ROOT / "02_dat"
-D03 = DATA_ROOT / "03_dat"
+D03 = DATA_ROOT / "03_features"
 D03.mkdir(parents=True, exist_ok=True)
 
 STAMP_RE = re.compile(r"_(\d{8}_\d{6})\.")

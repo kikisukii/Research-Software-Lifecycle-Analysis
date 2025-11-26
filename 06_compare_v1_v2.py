@@ -14,13 +14,13 @@ import numpy as np
 
 # --- Configuration ---
 # V1 Plotting Script Path
-SCRIPT_V1 = Path("v1/05_c_v1_8w.py") # Note: Updated to match previous file name provided
+SCRIPT_V1 = Path("v1/05_c_plot_v1_8w.py") # Note: Updated to match previous file name provided
 # V2 Plotting Script Path (Ensure this is the version with updated labels)
-SCRIPT_V2 = Path("v2/05c_plot.py")
+SCRIPT_V2 = Path("v2/05c_plot_v2_8w.py")
 
 # Data Directories (Used to find common repos)
 DIR_V1_DATA = Path("v1_data/05_b_apply")
-DIR_V2_DATA = Path("v2_data/05_b")
+DIR_V2_DATA = Path("v2_data/05_b_apply")
 
 
 def get_v1_repos():
@@ -42,7 +42,7 @@ def get_v2_repos():
         cands = sorted(DIR_V2_DATA.glob("05b_assignments_with_stage_v2_*.csv"))
 
     if not cands:
-        print("[Error] V2 data not found (v2_data/05_b/...)")
+        print("[Error] V2 data not found (v2_data/05_b_apply/...)")
         return set()
 
     print(f"[Data] V2: {cands[-1].name}")
