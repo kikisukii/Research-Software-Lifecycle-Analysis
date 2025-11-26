@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import os  # <--- 新增
 from p01_inference import run_git_analysis
 
 # Page Config
@@ -37,19 +38,21 @@ def main():
     if run_btn and repo_url:
         with st.spinner("Cloning repo and crunching numbers... (This may take 10-20s)"):
             try:
-                # 1. Run Inference
-                # Point to the local pkl file
-                model_path = "model_bundle_v2.pkl"
+                # --- 核心修改开始 ---
+                # 获取当前脚本所在的目录，确保无论在哪里运行都能找到模型
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
+                # --- 核心修改结束 ---
+
                 df = run_git_analysis(repo_url, model_path)
 
-                # 2. Plotting with Plotly
+                # Plotting with Plotly
                 st.success(f"Analysis complete! Found {len(df)} weeks of history.")
 
                 # Create interactive plot
                 fig = go.Figure()
 
-                # Add Commits Line
-                # Smoothing for visual clarity
+                # Add Commits Line (Smoothing for visual clarity)
                 df["commits_smooth"] = df["commits"].rolling(window=4, center=True).mean()
 
                 fig.add_trace(go.Scatter(
@@ -61,12 +64,6 @@ def main():
                     customdata=df['stage_name'],
                     hovertemplate="<b>Date:</b> %{x}<br><b>Commits:</b> %{y:.1f}<br><b>Phase:</b> %{customdata}<extra></extra>"
                 ))
-
-                # Add Background Colors (simulated as bars for simplicity in Plotly or Shapes)
-                # Here we use a simpler approach: A heatmap-like strip or just checking segments
-                # For high performance web rendering, we just color the line points or use Shapes.
-                # Let's stick to a clean line chart with hover info first.
-                # Adding 100s of rectangles can slow down the browser.
 
                 fig.update_layout(
                     title=f"Lifecycle Timeline: {repo_url}",
