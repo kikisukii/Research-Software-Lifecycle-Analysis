@@ -3,6 +3,10 @@
 v2/05a_cluster_and_profiles_v2.py — Final clustering (K=6) + profiles.
 Writes to v2_data/05_a/.
 
+Change in this version:
+  - Append per-cluster PCA centroids to the profiles CSV as columns:
+    pc1_centroid, pc2_centroid, pc3_centroid, ... (up to n_components).
+
 Pipeline:
   - Read latest 03 features
   - Filter dead_flag==0 (keep zero/low windows)
@@ -29,7 +33,7 @@ from sklearn.cluster import KMeans
 THIS = Path(__file__).resolve()
 ROOT = THIS.parent.parent
 D03   = ROOT / "v2_data" / "03_dat"
-D05_A = ROOT / "v2_data" / "05_a"   # <= changed as requested
+D05_A = ROOT / "v2_data" / "05_a"   # <= keep as requested
 D05_A.mkdir(parents=True, exist_ok=True)
 
 def latest_stamp_from_03(d03: Path) -> str:
@@ -137,10 +141,11 @@ med = assign_df.groupby("cluster")["commits_8w_sum"].median().sort_values(ascend
 rank_map = {cl: i for i, cl in enumerate(med.index)}  # 0 is highest activity
 assign_df["cluster_rank_by_commits"] = assign_df["cluster"].map(rank_map)
 
+# expose per-window PCA coordinates (unchanged)
 for i in range(_n_comp(pca)):
     assign_df[f"PC{i+1}"] = Z[:, i]
 
-# ---------------- profiles on ORIGINAL features (no FutureWarning) ----------------
+# ---------------- profiles on ORIGINAL features ----------------
 def q25(s: pd.Series) -> float: return float(s.quantile(0.25))
 def q75(s: pd.Series) -> float: return float(s.quantile(0.75))
 
@@ -156,6 +161,14 @@ for col in FEATURES:
     agg_dict[f"{col}_p75"] = (col, q75)
 
 profiles = assign_df.groupby("cluster", as_index=True).agg(**agg_dict).reset_index()
+
+# === NEW: attach PCA centroids per cluster into profiles (ONLY this addition) ===
+centroid_cols = [f"pc{i+1}_centroid" for i in range(_n_comp(pca))]
+centroid_df = pd.DataFrame(km.cluster_centers_, columns=centroid_cols)
+centroid_df["cluster"] = np.arange(K, dtype=int)
+profiles = profiles.merge(centroid_df, on="cluster", how="left")
+# === END NEW ===
+
 profiles = profiles.sort_values("cluster_rank_by_commits").reset_index(drop=True)
 
 # ---------------- save ----------------

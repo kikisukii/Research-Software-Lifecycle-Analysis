@@ -2,10 +2,19 @@
 """
 v2/04_select_k_v2.py — K selection only (no clustering) + ONE PCA CSV + progress bar.
 
+This parameterized version keeps all original defaults intact:
+- By default it auto-picks the latest 03 STAMP, evaluates K=2..6,
+  and writes outputs to v2_data/04_dat/ with the same filenames as before.
+
+You can also extend the experiment AFTER the 2..6 run, e.g., test K=7..10
+and save into v2_data/04_dat/tuning_k/ WITHOUT overwriting previous results.
+See "CLI examples" below.
+
 Outputs:
-  1) v2_data/04_dat/04_kselect_scores_v2_<STAMP>.csv
-  2) v2_data/04_dat/04_kselect_summary_v2_<STAMP>.json   (YOU decide final K)
-  3) v2_data/04_dat/04_pca_all_v2_<STAMP>.csv            (ONE table with all PCA details: folds + full ref)
+  1) v2_data/04_dat[/...]/04_kselect_scores_v2_<STAMP>[<outtag>].csv
+  2) v2_data/04_dat[/...]/04_kselect_summary_v2_<STAMP>[<outtag>].json
+  3) v2_data/04_dat[/...]/04_pca_all_v2_<STAMP>[<outtag>].csv
+     (ONE table with all PCA details: folds + full ref)
 
 Design (agreed):
   - Features: commits_8w_sum, contributors_8w_unique, issues_closed_8w_count, releases_8w_count
@@ -13,18 +22,25 @@ Design (agreed):
   - Per-fold TRAIN pipeline: log1p -> StandardScaler -> PCA (>=90% cumulative EVR)
     * Fail-safe: if PC1 EVR > 0.70 AND |PC1 loading on 'issues_closed_8w_count'| >= 0.70 -> whiten=True
   - Metrics on TRAIN fold only: silhouette (euclidean), Calinski–Harabasz (CH)
-  - ONE PCA CSV includes: scope ('fold'/'full'), fold_id, component, feature, loading, evr, cum_evr,
+  - ONE PCA CSV includes: scope('fold'/'full'), fold_id, component, feature, loading, evr, cum_evr,
       n_components_selected, whiten, pc1_var_ratio, pc1_top_feature, pc1_top_loading_abs,
       thresholds (evr_threshold, pc1_ratio_threshold, issues_loading_min)
   - Progress bar shows total steps = N_SPLITS * len(KS)
 
-Notes:
-  - Progress bar uses tqdm if available; falls back to no-op if not installed.
+CLI examples (PyCharm Parameters or shell):
+  # Default behavior (latest STAMP, K=2..6, default outdir)
+  # -> no parameters needed
+
+  # Extend AFTER 2..6: run only K=7..10 and write into a subfolder
+  --kmin 7 --kmax 10 --outdir v2_data/04_dat/tuning_k --outtag _k7_10_try1
+
+  # (Optional) Force a specific STAMP (if you duplicated 03 features with a new timestamp)
+  --stamp 20251124_170000 --kmin 7 --kmax 10 --outdir v2_data/04_dat/tuning_k --outtag _k7_10_try1
 """
 
 from __future__ import annotations
 from pathlib import Path
-import re, json, os
+import re, json, os, argparse
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
@@ -43,7 +59,6 @@ def _tqdm_iter(iterable=None, total=None, **kwargs):
         from tqdm import tqdm  # type: ignore
         return tqdm(iterable, total=total, **kwargs)
     except Exception:
-        # Fallback: return the iterable itself, and a dummy object for manual bars
         if iterable is not None:
             return iterable
         class _Dummy:
@@ -78,8 +93,7 @@ class _ManualBar:
 THIS = Path(__file__).resolve()
 ROOT = THIS.parent.parent
 D03  = ROOT / "v2_data" / "03_dat"
-D04  = ROOT / "v2_data" / "04_dat"
-D04.mkdir(parents=True, exist_ok=True)
+D04_DEFAULT  = ROOT / "v2_data" / "04_dat"
 
 def latest_stamp_from_03(d03: Path) -> str:
     cands = sorted(d03.glob("03_features_weekly_v2_*.csv"))
@@ -90,13 +104,35 @@ def latest_stamp_from_03(d03: Path) -> str:
         raise RuntimeError(f"Cannot parse STAMP from filename: {cands[-1].name}")
     return m.group(1)
 
-STAMP = latest_stamp_from_03(D03)
+# ---------------- argparse (NEW) ----------------
+ap = argparse.ArgumentParser()
+ap.add_argument("--stamp", type=str, default=None, help="Override STAMP; by default use latest 03 STAMP.")
+ap.add_argument("--kmin", type=int, default=None, help="If set with --kmax, override KS to range(kmin..kmax).")
+ap.add_argument("--kmax", type=int, default=None, help="If set with --kmin, override KS to range(kmin..kmax).")
+ap.add_argument("--outdir", type=str, default=None, help="Output directory; default v2_data/04_dat/")
+ap.add_argument("--outtag", type=str, default="", help="Optional tag appended to filenames to avoid overwrite.")
+ap.add_argument("--folds", type=int, default=None, help="Override number of GroupKFold splits (default 5).")
+ap.add_argument("--seed", type=int, default=None, help="Override RANDOM_STATE for KMeans/PCA (default 123).")
+args, _ = ap.parse_known_args()
+
+STAMP = args.stamp or latest_stamp_from_03(D03)
 F_FEAT = D03 / f"03_features_weekly_v2_{STAMP}.csv"
 
-# ---------------- config ----------------
-RANDOM_STATE = 123
+# pick output dir
+if args.outdir:
+    D04 = (ROOT / args.outdir) if not Path(args.outdir).is_absolute() else Path(args.outdir)
+else:
+    D04 = D04_DEFAULT
+D04.mkdir(parents=True, exist_ok=True)
+TAG = args.outtag if args.outtag else ""  # prepend underscore in caller if desired (e.g., _k7_10)
+
+# ---------------- config (defaults preserved) ----------------
+RANDOM_STATE = 123 if args.seed is None else int(args.seed)
 KS = [2,3,4,5,6]
-N_SPLITS = 5
+if args.kmin is not None and args.kmax is not None:
+    KS = list(range(int(args.kmin), int(args.kmax)+1))
+
+N_SPLITS = 5 if args.folds is None else int(args.folds)
 
 EXPLAINED_VAR_THRESHOLD = 0.90   # PCA cumulative explained variance threshold
 PC1_DOMINANCE_THRESHOLD = 0.70   # if PC1 EVR > 70%
@@ -160,7 +196,7 @@ df = df[df["dead_flag"] == 0].copy().reset_index(drop=True)
 groups = df["repo"].astype(str).values
 X_all = df[FEATURES].copy()
 
-print(f"[INFO] STAMP={STAMP} | windows(death=0)={len(df)} | repos={df['repo'].nunique()}")
+print(f"[INFO] STAMP={STAMP} | windows(dead=0)={len(df)} | repos={df['repo'].nunique()} | K={KS} | outdir={D04}")
 
 # ---------------- cross-validated K selection + ONE PCA table ----------------
 scores_rows = []
@@ -211,11 +247,10 @@ for tr_idx, va_idx in gkf.split(X_all, groups=groups):
                 "issues_loading_min": PC1_ISSUES_LOADING_MIN,
             })
 
-    # Evaluate K on TRAIN fold only (advance progress per K, even if skipped)
+    # Evaluate K on TRAIN fold only (advance progress per K)
     n_tr = Xtr_p.shape[0]
     for k in KS:
         if n_tr <= k:
-            # still advance progress to keep total steps consistent
             pbar.update(1)
             continue
         km = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10)
@@ -234,7 +269,7 @@ pbar.close()
 
 # Save per-fold K metrics
 scores = pd.DataFrame(scores_rows).sort_values(["k","fold"])
-scores_csv = D04 / f"04_kselect_scores_v2_{STAMP}.csv"
+scores_csv = D04 / f"04_kselect_scores_v2_{STAMP}{TAG}.csv"
 scores.to_csv(scores_csv, index=False)
 
 # Aggregate (median across folds) & suggest K (you decide finally)
@@ -257,9 +292,10 @@ summary = {
     "pc1_issues_loading_min": PC1_ISSUES_LOADING_MIN,
     "suggested_k_by_metrics": int(suggested),
     "table": agg.to_dict(orient="records"),
-    "note": "Manual selection required. This is only a data-driven suggestion.",
+    "note": "Manual selection required. This is only a data-driven suggestion. "
+            "This run may extend the initial 2..6 experiment with K=7..10.",
 }
-with open(D04 / f"04_kselect_summary_v2_{STAMP}.json", "w", encoding="utf-8") as f:
+with open(D04 / f"04_kselect_summary_v2_{STAMP}{TAG}.json", "w", encoding="utf-8") as f:
     json.dump(summary, f, ensure_ascii=False, indent=2)
 
 # ---------------- FULL-data PCA reference (diagnostic only) ----------------
@@ -284,9 +320,10 @@ cum_f  = np.cumsum(evr_f)
 loads_f = pca_full.components_
 
 # Append FULL rows into the SAME ONE PCA table
+pca_rows_full = []
 for ic in range(_n_comp(pca_full)):
     for j, feat in enumerate(FEATURES):
-        pca_rows.append({
+        pca_rows_full.append({
             "scope": "full",
             "fold": np.nan,
             "component": ic+1,
@@ -305,11 +342,11 @@ for ic in range(_n_comp(pca_full)):
         })
 
 # Save ONE PCA CSV
-pca_df = pd.DataFrame(pca_rows).sort_values(["scope","fold","component","feature"])
-pca_csv = D04 / f"04_pca_all_v2_{STAMP}.csv"
+pca_df = pd.DataFrame([*pca_rows, *pca_rows_full]).sort_values(["scope","fold","component","feature"])
+pca_csv = D04 / f"04_pca_all_v2_{STAMP}{TAG}.csv"
 pca_df.to_csv(pca_csv, index=False)
 
 print(f"[OK] Saved K-selection scores  -> {scores_csv}")
-print(f"[OK] Saved K-selection summary -> {D04 / f'04_kselect_summary_v2_{STAMP}.json'}")
+print(f"[OK] Saved K-selection summary -> {D04 / f'04_kselect_summary_v2_{STAMP}{TAG}.json'}")
 print(f"[OK] Saved ONE PCA table       -> {pca_csv}")
 print("[OK] No clustering performed in this step.")

@@ -4,9 +4,9 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 # --- Load .env from the project root directory ---
-# Explicitly tell load_dotenv() the path to .env (which is one level up from the script)
 script_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.abspath(os.path.join(script_dir, '..', '.env'))
+# 改成直接在当前目录找 .env，去掉那个 '..'
+dotenv_path = os.path.join(script_dir, '.env')
 
 load_dotenv(dotenv_path=dotenv_path)
 TOKEN = os.getenv("RSD_TOKEN")
@@ -89,7 +89,7 @@ def fetch_page(after_id=None, limit=500):
 def main():
     # --- Define output directory and file ---
     # 1. Define the data directory (relative to the project root, one level up)
-    DATA_DIR = os.path.abspath(os.path.join(script_dir, '..', 'data'))
+    DATA_DIR = script_dir
 
     # 2. Create the data directory if it doesn't exist
     os.makedirs(DATA_DIR, exist_ok=True)

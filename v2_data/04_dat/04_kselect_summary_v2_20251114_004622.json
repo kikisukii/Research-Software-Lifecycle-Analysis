@@ -15,49 +15,49 @@
   "table": [
     {
       "k": 2,
-      "silhouette_median": 0.38910059161858307,
-      "silhouette_p25": 0.3887481798997453,
-      "silhouette_p75": 0.3957628007749768,
-      "ch_median": 55827.846024146544,
+      "silhouette_median": 0.3928016003896614,
+      "silhouette_p25": 0.3898845227089526,
+      "silhouette_p75": 0.39331284562768704,
+      "ch_median": 55667.925109251024,
       "ncomp_median": 3.0,
       "whiten_ratio": 0.0
     },
     {
       "k": 3,
-      "silhouette_median": 0.4147737749649668,
-      "silhouette_p25": 0.4113582144593054,
-      "silhouette_p75": 0.4155877885579526,
-      "ch_median": 57505.58717271995,
+      "silhouette_median": 0.4110583464470401,
+      "silhouette_p25": 0.41091399125218026,
+      "silhouette_p75": 0.41329632995681737,
+      "ch_median": 57212.78667030452,
       "ncomp_median": 3.0,
       "whiten_ratio": 0.0
     },
     {
       "k": 4,
-      "silhouette_median": 0.4194670005783925,
-      "silhouette_p25": 0.41769704470693453,
-      "silhouette_p75": 0.4246944293194993,
-      "ch_median": 57476.468295608596,
+      "silhouette_median": 0.4193584879102067,
+      "silhouette_p25": 0.4176836544832566,
+      "silhouette_p75": 0.4194520586499536,
+      "ch_median": 57348.63989012839,
       "ncomp_median": 3.0,
       "whiten_ratio": 0.0
     },
     {
       "k": 5,
-      "silhouette_median": 0.42061394679845293,
-      "silhouette_p25": 0.4198114904067233,
-      "silhouette_p75": 0.42596242099004855,
-      "ch_median": 60343.98609788597,
+      "silhouette_median": 0.4175612693426067,
+      "silhouette_p25": 0.41564444149834806,
+      "silhouette_p75": 0.4195278046308651,
+      "ch_median": 59289.373584174115,
       "ncomp_median": 3.0,
       "whiten_ratio": 0.0
     },
     {
       "k": 6,
-      "silhouette_median": 0.46241478734854685,
-      "silhouette_p25": 0.46025485940629446,
-      "silhouette_p75": 0.46568840713945747,
-      "ch_median": 64655.00400804742,
+      "silhouette_median": 0.45659366105372035,
+      "silhouette_p25": 0.45606879850279464,
+      "silhouette_p75": 0.4589179787607556,
+      "ch_median": 64027.31811520807,
       "ncomp_median": 3.0,
       "whiten_ratio": 0.0
     }
   ],
-  "note": "Manual selection required. This is only a data-driven suggestion."
+  "note": "Manual selection required. This is only a data-driven suggestion. This run may extend the initial 2..6 experiment with K=7..10."
 }

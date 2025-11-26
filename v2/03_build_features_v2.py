@@ -231,12 +231,26 @@ for repo in repos:
     if repo in raw_by_repo:
         weekly_sets.update(raw_by_repo[repo].to_dict())
 
-    # dead_flag: from 25th consecutive zero-commit week onwards
+    # dead_flag: from 24th consecutive inactive week onwards (commits or releases)
+    # Rationale: Matches v1 threshold (24 weeks) and leverages multi-signal (commit + release)
     consec_zero = 0
     dead_week = pd.Series(0, index=grid, dtype="int8")
+
+    # Treat NaN in releases as 0 for liveness check to avoid comparison errors
+    # (Note: This does not fill NaN in the final 'releases_8w_count' feature)
+    rel_filled = rel.fillna(0)
+
     for i in range(len(grid)):
-        consec_zero = consec_zero + 1 if comm.iloc[i] == 0 else 0
-        if consec_zero >= 25:
+        # A project is active if it has commits OR releases in that week
+        is_active = (comm.iloc[i] > 0) or (rel_filled.iloc[i] > 0)
+
+        if not is_active:
+            consec_zero += 1
+        else:
+            consec_zero = 0
+
+        # Threshold: 24 weeks (aligned with v1's 3x window logic)
+        if consec_zero >= 24:
             dead_week.iloc[i] = 1
 
     # ---------- FIX: compute rolling series directly (no slice assignment) ----------
@@ -266,17 +280,26 @@ for repo in repos:
     for i, dt in enumerate(grid):
         if i < 7:
             continue
+        # --- [MOD START] Save weekly raw metrics for visualization ---
         row = {
             "repo": repo,
             "week_unix": int(grid_unix[i]),
-            "week_dt":   str(dt),
+            "week_dt": str(dt),
+            # 8w features (for modeling)
             "commits_8w_sum": c8.iloc[i],
             "contributors_8w_unique": u8.iloc[i],
             "issues_closed_8w_count": i8.iloc[i],
             "releases_8w_count": r8.iloc[i],
+            # Weekly raw features (for plotting) -> Added
+            "commits_weekly": int(comm.iloc[i]),
+            "contributors_weekly": len(weekly_sets[dt]),  # Raw unique count for this week
+            "issues_weekly": float(iss.iloc[i]),  # Float to keep NaNs if any
+            "releases_weekly": float(rel.iloc[i]),  # Float to keep NaNs if any
+            # Flags
             "has_release_8w": (pd.NA if pd.isna(r8.iloc[i]) else int(r8.iloc[i] > 0)),
             "dead_flag": int(dead_week.iloc[i]),
         }
+        # --- [MOD END] ---
         num_cols = ["commits_8w_sum","contributors_8w_unique","issues_closed_8w_count","releases_8w_count"]
         na_cols = [c for c in num_cols if pd.isna(row[c])]
         if na_cols:

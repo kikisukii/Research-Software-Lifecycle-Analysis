@@ -1,21 +1,12 @@
 # =========================
-# Virtual envs
+# 1. Python & OS Standard
 # =========================
+# Virtual Environments
 .venv/
 venv/
 env/
 
-# =========================
-# IDE / OS 杂项
-# =========================
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
-
-# =========================
-# Python 构建 / 缓存
-# =========================
+# Build and Cache files
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -25,12 +16,28 @@ build/
 .ipynb_checkpoints/
 *.log
 
+# IDE and System files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
 # =========================
-# Secrets（包含你的 token）
+# 2. Security (CRITICAL)
 # =========================
+# Contains Secrets/Tokens - NEVER commit this file
 .env
 
 # =========================
-# git cache 目录（体积太大）
+# 3. Data & Artifacts
 # =========================
+# Ignore all generated data directories
+# (Code scripts in 'v1/' and 'v2/' will still be tracked, but data won't)
+v1_data/
+v2_data/
+
+# Ignore CSV files generated in the root directory (e.g. 01 output)
+*.csv
+
+# Ignore large Git cache directories used by scripts
 **/_gitcache/

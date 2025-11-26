@@ -1,7 +1,7 @@
-cluster,cluster_rank_by_commits,n_windows,has_release_8w_rate,zero_8w_rate,commits_8w_sum_p50,contributors_8w_unique_p50,issues_closed_8w_count_p50,releases_8w_count_p50,stage_name_suggested,stage_name
-4,0,12975,0.03252408477842,0.0,129.0,6.0,0.0,0.0,Peak,Rising-Dev
-3,1,8508,1.0,0.0,82.0,5.0,13.0,2.0,Peak,Peak-Release
-0,2,12259,0.0,0.0,59.0,4.0,9.0,0.0,Rising,Maintenance/Triage
-5,3,12577,1.0,0.0,14.0,2.0,1.0,1.0,Cooling,Cooling-Release
-2,4,31629,0.0,0.0,11.0,2.0,0.0,0.0,Low,Low
-1,5,26354,0.0042877741519313,0.6894589056689686,0.0,0.0,0.0,0.0,Low,Zero/Low
+cluster,stage_name,n_windows,commits_8w_sum_p50
+1,Internal Development,15195,108.0
+3,Peak Activity,8486,83.0
+5,Maintenance,12989,56.0
+2,Release Phase,12600,14.0
+4,Baseline,35628,7.0
+0,Dormant,18991,0.0
