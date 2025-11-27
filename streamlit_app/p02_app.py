@@ -46,7 +46,8 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.1.2)"
+    # --- FIXED VERSION TAG ---
+    st.caption("🚀 Version updated: 0.1.2")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -105,7 +106,7 @@ def main():
                     vertical_spacing=0.04
                 )
 
-                # --- REAL DATA FIRST (Ensures axis scales are correct) ---
+                # --- REAL DATA FIRST ---
 
                 # Row 1: Commits
                 fig.add_trace(go.Scatter(
@@ -139,19 +140,17 @@ def main():
                     showlegend=False
                 ), row=4, col=1)
 
-                # --- LEGEND DUMMIES (Added AFTER real data) ---
-                # We use x=[min_date] and y=[0] to be safe, but set opacity=0
+                # --- LEGEND DUMMIES (Added AFTER) ---
                 min_date = df['week_date'].min()
-
                 for stage_name, color in STAGE_COLORS.items():
                     fig.add_trace(go.Scatter(
-                        x=[min_date], y=[0],  # Valid data point
+                        x=[min_date], y=[0],
                         mode='markers',
                         marker=dict(size=15, symbol='square', color=color),
                         name=stage_name,
                         showlegend=True,
-                        opacity=0,  # Invisible on plot
-                        hoverinfo='skip'  # No hover
+                        opacity=0,
+                        hoverinfo='skip'
                     ), row=1, col=1)
 
                 # --- Inner Labels ---
@@ -197,13 +196,12 @@ def main():
                     template="plotly_white",
                     paper_bgcolor="white",
                     plot_bgcolor="white",
-                    # INCREASED TOP MARGIN to 130 to fit the legend
                     margin=dict(l=60, r=40, t=130, b=60),
                     showlegend=True,
                     legend=dict(
                         orientation="h",
                         yanchor="bottom",
-                        y=1.05,  # Moved higher up
+                        y=1.05,
                         xanchor="center", x=0.5,
                         font=dict(size=12, color="black"),
                         bgcolor="rgba(255,255,255,0.9)",
