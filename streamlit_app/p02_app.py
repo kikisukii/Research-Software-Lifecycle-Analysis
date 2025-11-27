@@ -131,7 +131,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.0")
+    st.caption("🚀 Version updated: 0.2.1")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -173,20 +173,14 @@ def main():
         st.session_state.trigger_auto_analyze = False
 
         try:
-            # --- STEP 1: Heavy Lifting (Inference) ---
-            # Using a spinner only for the download/calc part
-            with st.spinner("Fetching & Analyzing (Git Clone + API)..."):
+            # --- STEP 1: Inference ---
+            # [FIX 1] Simplified text
+            with st.spinner("Fetching & Analyzing..."):
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
                 df = run_git_analysis(repo_url, model_path, token)
 
-            # --- Feedback & Guide ---
-            st.success(f"Analysis complete! Weeks: {len(df)}")
-            # Explicit hint for raw data
-            st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
-
-            # --- STEP 2: Visualization (Rendering) ---
-            # A separate spinner for drawing the complex chart
+            # --- STEP 2: Visualization ---
             with st.spinner("Generating visualization..."):
                 c8_s = smooth_series(df['commits_8w_sum'])
                 u8_s = smooth_series(df['contributors_8w_unique'])
@@ -270,7 +264,10 @@ def main():
 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # --- Raw Data Expander ---
+                # [FIX 2] Messages appear AFTER chart
+                st.success(f"Analysis complete! Weeks: {len(df)}")
+                st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
+
                 with st.expander("View Raw Data"):
                     st.dataframe(df)
 
