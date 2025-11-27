@@ -13,6 +13,9 @@ Objective:
   - V1 Maintenance -> V2 Maintenance (#89c3eb)
   - V1 Low         -> V2 Dormant (#9ea1a3)
   - V1 Dead        -> V2 Dead (#383c3c)
+
+UPDATES:
+  - [Visual Fix] Data points aligned to MID-WEEK (+3.5 days) to match V2's latest fix.
 """
 
 import argparse
@@ -97,7 +100,10 @@ def plot_one_8w(repo, df_repo: pd.DataFrame, outdir: Path):
     # 1. Prepare Data
     df_repo = df_repo.sort_values("week_unix").reset_index(drop=True)
     x_unix = df_repo["week_unix"].values
-    x = to_utc_dt(df_repo["week_unix"])
+
+    # [Fix Logic] Use x_start for background, x_line for data points
+    x_start = to_utc_dt(df_repo["week_unix"])
+    x_line = x_start + pd.Timedelta(days=3, hours=12)  # Mid-week alignment
 
     # Calculate 8-week rolling sum (Simulating V2 Feature Logic)
     y_raw = df_repo["commits"].fillna(0)
@@ -107,7 +113,7 @@ def plot_one_8w(repo, df_repo: pd.DataFrame, outdir: Path):
     w, h = compute_figsize(int(x_unix.min()), int(x_unix.max()))
     fig, ax = plt.subplots(figsize=(w, h))
 
-    # 3. Plot Background (Phases)
+    # 3. Plot Background (Phases) - Uses x_start (Week Boundaries)
     stages = df_repo["stage"].fillna("Unknown").values
     segs = build_segments(x_unix, stages)
     for (ts0, ts1, stage) in segs:
@@ -116,9 +122,9 @@ def plot_one_8w(repo, df_repo: pd.DataFrame, outdir: Path):
         ax.axvspan(to_utc_dt([ts0])[0], to_utc_dt([ts1])[0],
                    facecolor=c, alpha=0.35, edgecolor=None)
 
-    # 4. Plot Line (Style matched to V2)
+    # 4. Plot Line (Style matched to V2) - Uses x_line (Mid-Week)
     # V2 uses dark grey line, lw=1.8
-    ax.plot(x, y_8w, lw=1.8, color='#333333', label="Commits (8-week rolling)")
+    ax.plot(x_line, y_8w, lw=1.8, color='#333333', label="Commits (8-week rolling)")
 
     # Optional: Grid
     ax.grid(True, axis="y", alpha=0.3)

@@ -2,13 +2,11 @@
 """
 v2/05c_plot_repo_v2.py — Per-repo multi-metric timeline with stage-colored background.
 
-UPDATES (User Specific):
+UPDATES:
   - Title format: "Life Activity(v2): owner/repo"
-  - Legend Title: "Stages"
-  - Stage Name: "Baseline" (removed Solo)
-  - Custom Color Palette & Legend Order applied.
-  - [NEW] Y-axis uses 8-week rolling data with clearer labels.
-  - [NEW] Default smoothing reduced to 3 to avoid double-lag.
+  - Y-axis: Uses 8-week rolling data (Model Input).
+  - Visualization Fix: Data points aligned to MID-WEEK (+3.5 days) to align properly with background phases.
+  - Smoothing: Default reduced to 3.
 """
 
 from __future__ import annotations
@@ -28,7 +26,7 @@ D05_B = ROOT / "v2_data" / "05_b_apply"
 D05_C = ROOT / "v2_data" / "05_c_viz"
 
 # ---------- config ----------
-# 1. Custom Colors (User Specified)
+# 1. Custom Colors
 STAGE_COLORS = {
     "Baseline": "#f8b862",  # Orange-ish
     "Internal Development": "#38b48b",  # Green-ish
@@ -39,7 +37,7 @@ STAGE_COLORS = {
     "Dead": "#383c3c",  # Dark Grey
 }
 
-# 2. Legend Order (User Specified: Top to Bottom)
+# 2. Legend Order
 LEGEND_ORDER = [
     "Baseline",
     "Internal Development",
@@ -50,12 +48,12 @@ LEGEND_ORDER = [
     "Dead"
 ]
 
-# [Mod 1]: Update labels to explicitly state "8-week rolling" to avoid ambiguity
+# 3. Metrics (8-week rolling)
 METRICS = [
-    ("commits_8w_sum", "Commits (8w rolling)"),
-    ("contributors_8w_unique", "Contributors (8w rolling)"),
-    ("issues_closed_8w_count", "Issues Closed (8w rolling)"),
-    ("releases_8w_count", "Releases (8w rolling)"),
+    ("commits_8w_sum", "Commits (8-week rolling)"),
+    ("contributors_8w_unique", "Contributors (8-week rolling)"),
+    ("issues_closed_8w_count", "Issues Closed (8-week rolling)"),
+    ("releases_8w_count", "Releases (8-week rolling)"),
 ]
 
 MIN_WIDTH, MAX_WIDTH = 8.0, 22.0
@@ -137,54 +135,56 @@ def plot_repo(df_repo: pd.DataFrame, repo: str, stamp: str, outdir: Path, smooth
 
     df_repo = dedupe_by_week(df_repo)
 
+    # [Logic Fix] Align data points to MID-WEEK
+    # x_start: Sunday 00:00 (Used for background segments)
+    # x_line:  Wednesday 12:00 (Used for data line, +3.5 days)
     x_unix = df_repo["week_unix"].values
-    x = to_utc_dt(df_repo["week_unix"])
+    x_start = to_utc_dt(df_repo["week_unix"])
+    x_line = x_start + pd.Timedelta(days=3, hours=12)
+
     stages = df_repo["stage_name"].fillna("NA").values
 
     fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True,
                              figsize=compute_figsize(int(x_unix.min()), int(x_unix.max())))
 
-    # background spans
+    # 1. Background Spans (Aligns with x_start/Week Boundaries)
     segs = build_segments(x_unix, stages)
     for ax in axes:
         for (ts0, ts1, st) in segs:
             if st == "NA": continue
-            # If st is "Baseline (Solo)" in CSV but "Baseline" in config,
-            # we need to be careful. But user said CSV is already fixed to "Baseline".
             color = STAGE_COLORS.get(st, "#eeeeee")
             ax.axvspan(to_utc_dt(pd.Series([ts0]))[0],
                        to_utc_dt(pd.Series([ts1]))[0],
-                       facecolor=color, alpha=0.35, edgecolor=None)  # alpha slightly higher for new colors
+                       facecolor=color, alpha=0.35, edgecolor=None)
 
-    # plot metrics
+    # 2. Data Lines (Aligns with x_line/Mid-Week)
     for ax, (col, label) in zip(axes, METRICS):
         y = df_repo[col].astype(float).values
         y_s = smooth_series(y, smooth)
-        ax.plot(x, y_s, lw=1.8, label=label, color="#333333")  # Dark line for contrast
+
+        # Plot utilizing x_line to center the data visually within the week
+        ax.plot(x_line, y_s, lw=1.8, label=label, color="#333333")
+
         ax.set_ylabel(label)
         ax.grid(True, axis="y", alpha=0.3)
-        # ax.legend(loc="upper left", fontsize=8) # Optional: remove metric legend to clean up
 
     axes[-1].set_xlabel("Week (UTC)")
     axes[-1].xaxis.set_major_locator(mdates.AutoDateLocator(minticks=6, maxticks=12))
     axes[-1].xaxis.set_major_formatter(mdates.ConciseDateFormatter(axes[-1].xaxis.get_major_locator()))
 
-    # 3. Updated Title Format
     fig.suptitle(f"Life Activity(v2): {repo}", fontsize=14, y=0.98)
 
-    # 4. Updated Legend
+    # Legend
     handles = []
     for k in LEGEND_ORDER:
         if k in STAGE_COLORS:
             handles.append(Patch(facecolor=STAGE_COLORS[k], edgecolor="none", alpha=0.6, label=k))
 
-    # Add any stage found in data but not in config (Grey fallback)
     existing = set(stages)
     for st in existing:
         if st not in LEGEND_ORDER and st != "NA":
             handles.append(Patch(facecolor="#eeeeee", edgecolor="black", label=st))
 
-    # Legend Title -> "Stages"
     axes[0].legend(handles=handles, loc="upper right", fontsize=9, title="Stages", frameon=True)
 
     fig.tight_layout(rect=[0, 0, 1, 0.96])
@@ -200,7 +200,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", action="append", help="Owner/name")
     ap.add_argument("--sample", type=int, default=10, help="Random sample size")
-    # [Mod 2]: Change default smooth to 3. Since data is already 8w rolling, no need for strong smoothing.
+    # Default smooth set to 3 as discussed
     ap.add_argument("--smooth", type=int, default=3, help="Smoothing window")
     args = ap.parse_args()
 
@@ -215,7 +215,7 @@ def main():
 
     df = pd.read_csv(f_assign, parse_dates=["week_dt"])
 
-    # Verify "Baseline" exists if user expects it
+    # Verify "Baseline" fix
     unique_stages = df["stage_name"].unique()
     if "Baseline" not in unique_stages and "Baseline (Solo)" in unique_stages:
         print("[WARN] Found 'Baseline (Solo)' in CSV but config uses 'Baseline'. Auto-fixing column...")
