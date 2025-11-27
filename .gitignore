@@ -43,3 +43,6 @@ v2_data/
 
 # Ignore large Git cache directories used by scripts
 **/_gitcache/
+
+#Keep RSD list for Web Toll
+!streamlit_app
