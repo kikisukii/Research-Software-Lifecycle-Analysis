@@ -10,6 +10,7 @@ from p01_inference import run_git_analysis
 st.set_page_config(page_title="Research Software Lifecycle Detector", layout="wide")
 
 # --- Colors (V2 Standard) ---
+# Dictionary order determines Legend order
 STAGE_COLORS = {
     "Baseline": "#f8b862",
     "Internal Development": "#38b48b",
@@ -40,13 +41,13 @@ def build_segments(df):
 
 
 def smooth_series(series, window=3):
-    """V2 Smoothing logic (Used ONLY for drawing the line)."""
+    """V2 Smoothing logic."""
     return series.rolling(window=window, center=True, min_periods=1).mean()
 
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.1.0")
+    st.caption("🚀 Version updated: 0.1.1")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -73,31 +74,20 @@ def main():
                 st.success(f"Analysis complete! Weeks: {len(df)}")
 
                 # --- Data Prep ---
-                # A. Smooth curves (For Visual Line Only)
                 c8_s = smooth_series(df['commits_8w_sum'])
                 u8_s = smooth_series(df['contributors_8w_unique'])
                 i8_s = smooth_series(df['issues_closed_8w_count'])
                 r8_s = df['releases_8w_count']
 
-                # B. Raw Data (For Hover Tooltip Only)
-                # We explicitly grab the raw columns
                 raw_c = df['commits_8w_sum'].fillna(0).astype(int)
                 raw_u = df['contributors_8w_unique'].fillna(0).astype(int)
                 raw_i = df['issues_closed_8w_count'].fillna(0).astype(int)
                 raw_r = df['releases_8w_count'].fillna(0).astype(int)
 
-                # Prepare Custom Data for Hover (Stacking Raw Values)
-                # Order: [Stage, Raw_Commits, Raw_Contribs, Raw_Issues, Raw_Releases]
                 custom_data = np.stack((
-                    df['stage_name'],
-                    raw_c,
-                    raw_u,
-                    raw_i,
-                    raw_r
+                    df['stage_name'], raw_c, raw_u, raw_i, raw_r
                 ), axis=-1)
 
-                # Define Universal Hover Template
-                # %{x|%b %d, %Y} formats date to "Oct 20, 2025"
                 hover_template = (
                         "<b>%{x|%b %d, %Y}</b><br>" +
                         "<b>Stage:</b> %{customdata[0]}<br>" +
@@ -113,61 +103,70 @@ def main():
                 fig = make_subplots(
                     rows=4, cols=1,
                     shared_xaxes=True,
-                    vertical_spacing=0.03
+                    vertical_spacing=0.04
                 )
 
+                # --- STEP 1: Add Dummy Traces for Stage Legend (Top) ---
+                # These traces are invisible on the plot but show up in the legend
+                for stage_name, color in STAGE_COLORS.items():
+                    fig.add_trace(go.Scatter(
+                        x=[None], y=[None],
+                        mode='markers',
+                        marker=dict(size=15, symbol='square', color=color),
+                        name=stage_name,
+                        showlegend=True  # Only these appear in the top legend
+                    ), row=1, col=1)
+
+                # --- STEP 2: Real Metric Traces (Hidden from Legend) ---
                 # Row 1: Commits
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=c8_s,  # Draw smoothed
+                    x=df['week_date'], y=c8_s,
                     mode='lines', line=dict(color='#333333', width=2),
-                    name='Commits', customdata=custom_data, hovertemplate=hover_template
+                    name='Commits', customdata=custom_data, hovertemplate=hover_template,
+                    showlegend=False  # Hide from top legend
                 ), row=1, col=1)
 
                 # Row 2: Contributors
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=u8_s,  # Draw smoothed
+                    x=df['week_date'], y=u8_s,
                     mode='lines', line=dict(color='#1f77b4', width=2),
-                    name='Contributors', customdata=custom_data, hovertemplate=hover_template
+                    name='Contributors', customdata=custom_data, hovertemplate=hover_template,
+                    showlegend=False
                 ), row=2, col=1)
 
                 # Row 3: Issues
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=i8_s,  # Draw smoothed
+                    x=df['week_date'], y=i8_s,
                     mode='lines', line=dict(color='#ff7f0e', width=2),
-                    name='Issues', customdata=custom_data, hovertemplate=hover_template
+                    name='Issues', customdata=custom_data, hovertemplate=hover_template,
+                    showlegend=False
                 ), row=3, col=1)
 
                 # Row 4: Releases
                 fig.add_trace(go.Scatter(
                     x=df['week_date'], y=r8_s,
                     mode='lines', line=dict(color='#9467bd', width=2),
-                    name='Releases', customdata=custom_data, hovertemplate=hover_template
+                    name='Releases', customdata=custom_data, hovertemplate=hover_template,
+                    showlegend=False
                 ), row=4, col=1)
 
-                # --- Inner Legends (Simulated) ---
-                # We use HTML styling to create a "Line + Text" look
+                # --- Inner Labels (Right Corner) ---
                 labels = [
                     (1, "Commits (8w)", "#333333"),
                     (2, "Contributors (8w)", "#1f77b4"),
                     (3, "Issues Closed (8w)", "#ff7f0e"),
                     (4, "Releases (8w)", "#9467bd")
                 ]
-
                 for row, text, color in labels:
                     y_ref = "y domain" if row == 1 else f"y{row} domain"
-
-                    # This Annotation simulates a Legend Box
-                    # '—' is used as the line symbol
                     fig.add_annotation(
                         text=f"<b><span style='color:{color}; font-size:20px'>—</span> {text}</b>",
                         showarrow=False,
-                        x=0.995, y=0.96,  # Position inside top-right
+                        x=0.995, y=0.96,
                         xref="x domain", yref=y_ref,
                         align="right",
-                        bgcolor="rgba(255,255,255,0.8)",  # Semi-transparent white background box
-                        bordercolor="black",  # Thin black border
-                        borderwidth=1,
-                        borderpad=4,  # Padding inside the box
+                        bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="black", borderwidth=1, borderpad=4,
                         font=dict(color="black", size=12)
                     )
 
@@ -184,30 +183,36 @@ def main():
                             row=row_idx, col=1
                         )
 
-                # --- Layout ---
+                # --- Layout: Legend Position ---
                 min_date = df['week_date'].min()
                 max_date = df['week_date'].max()
 
                 fig.update_layout(
                     title=dict(text=f"Lifecycle Timeline (v2): {repo_url}", font=dict(color="black", size=18)),
                     height=1000,
-                    hovermode="x",  # Lock hover line
+                    hovermode="x",
                     template="plotly_white",
                     paper_bgcolor="white",
                     plot_bgcolor="white",
-                    margin=dict(l=60, r=40, t=60, b=60),
-                    showlegend=False  # Hide default global legend
+                    margin=dict(l=60, r=40, t=100, b=60),  # Increase top margin for legend
+                    showlegend=True,  # Enable Legend
+                    legend=dict(
+                        orientation="h",  # Horizontal
+                        yanchor="bottom", y=1.01,  # Position above the plot
+                        xanchor="center", x=0.5,  # Centered
+                        font=dict(size=12, color="black"),
+                        bgcolor="rgba(255,255,255,0.9)",
+                        bordercolor="#e5e5e5", borderwidth=1
+                    )
                 )
 
                 common_axis = dict(
-                    showgrid=False,
-                    zeroline=False,
+                    showgrid=False, zeroline=False,
                     showline=True, linecolor='black', linewidth=1,
                     mirror=True,
                     tickfont=dict(color='black', size=11),
                     range=[min_date, max_date]
                 )
-
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
