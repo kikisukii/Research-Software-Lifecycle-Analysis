@@ -150,7 +150,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.7")
+    st.caption("🚀 Version updated: 0.2.8")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -170,7 +170,7 @@ def main():
         else:
             st.toast("⚠️ Could not find a valid repo.", icon="❌")
 
-    # --- SECTION 1: INPUT (Top) ---
+    # --- SECTION 1: INPUT ---
     col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         repo_url = st.text_input(
@@ -184,13 +184,9 @@ def main():
     with col3:
         st.button("🎲 Random", on_click=pick_random_and_run, use_container_width=True, help="Auto-pick and analyze")
 
-    # --- SECTION 2: NOTICES ---
     show_limitations()
-
-    # --- SECTION 3: DESCRIPTIONS ---
     show_stage_definitions()
 
-    # --- LOGIC ---
     should_run = manual_run or (st.session_state.trigger_auto_analyze and repo_url)
 
     if should_run:
@@ -215,10 +211,21 @@ def main():
                 raw_i = df['issues_closed_8w_count'].fillna(0).astype(int)
                 raw_r = df['releases_8w_count'].fillna(0).astype(int)
 
-                custom_data = np.stack((df['stage_name'], raw_c, raw_u, raw_i, raw_r), axis=-1)
+                # [LOGIC CHANGE] Calculate Mid-Week for plotting ONLY
+                # This ensures the line data point sits in the visual center of the week
+                # df['week_date'] is Sunday 00:00. Mid-week is +3.5 days.
+                plot_x = df['week_date'] + pd.Timedelta(days=3, hours=12)
+
+                # [CRITICAL] Prepare formatted date string for Hover
+                # We want Hover to say "Week: Oct 20" (Sunday), NOT "Oct 23" (Wednesday)
+                date_strs = df['week_date'].dt.strftime('%b %d, %Y')
+
+                # Stack data into customdata (Added date_strs at index 5)
+                # Structure: [Stage, c, u, i, r, DateString]
+                custom_data = np.stack((df['stage_name'], raw_c, raw_u, raw_i, raw_r, date_strs), axis=-1)
 
                 hover_template = (
-                        "<b>%{x|%b %d, %Y}</b><br>" +
+                        "<b>%{customdata[5]}</b><br>" +  # Use the passed Sunday date string
                         "<b>Stage:</b> %{customdata[0]}<br>" +
                         "<br>" +
                         "Commits (8w): %{customdata[1]}<br>" +
@@ -230,19 +237,24 @@ def main():
 
                 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
-                fig.add_trace(go.Scatter(x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
-                                         name='Commits', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=1, col=1)
-                fig.add_trace(go.Scatter(x=df['week_date'], y=u8_s, mode='lines', line=dict(color='#1f77b4', width=2),
-                                         name='Contributors', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=2, col=1)
-                fig.add_trace(go.Scatter(x=df['week_date'], y=i8_s, mode='lines', line=dict(color='#ff7f0e', width=2),
-                                         name='Issues', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=3, col=1)
-                fig.add_trace(go.Scatter(x=df['week_date'], y=r8_s, mode='lines', line=dict(color='#9467bd', width=2),
-                                         name='Releases', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=4, col=1)
+                # --- PLOTTING ---
+                # Use 'plot_x' (Mid-Week) for X coordinates
+                # Use 'customdata[5]' (Sunday) for Hover text
 
+                fig.add_trace(
+                    go.Scatter(x=plot_x, y=c8_s, mode='lines', line=dict(color='#333333', width=2), name='Commits',
+                               customdata=custom_data, hovertemplate=hover_template, showlegend=False), row=1, col=1)
+                fig.add_trace(
+                    go.Scatter(x=plot_x, y=u8_s, mode='lines', line=dict(color='#1f77b4', width=2), name='Contributors',
+                               customdata=custom_data, hovertemplate=hover_template, showlegend=False), row=2, col=1)
+                fig.add_trace(
+                    go.Scatter(x=plot_x, y=i8_s, mode='lines', line=dict(color='#ff7f0e', width=2), name='Issues',
+                               customdata=custom_data, hovertemplate=hover_template, showlegend=False), row=3, col=1)
+                fig.add_trace(
+                    go.Scatter(x=plot_x, y=r8_s, mode='lines', line=dict(color='#9467bd', width=2), name='Releases',
+                               customdata=custom_data, hovertemplate=hover_template, showlegend=False), row=4, col=1)
+
+                # Legend Dummies (Use original min_date to anchor, invisible)
                 min_date = df['week_date'].min()
                 for stage_name, color in STAGE_COLORS.items():
                     fig.add_trace(go.Scatter(x=[min_date], y=[0], mode='markers',
@@ -258,12 +270,14 @@ def main():
                                        bgcolor="rgba(255,255,255,0.8)", bordercolor="black", borderwidth=1, borderpad=4,
                                        font=dict(color="black", size=12))
 
+                # Background Segments (Use original week_date to fill cells properly)
                 segments = build_segments(df)
                 for row_idx in range(1, 5):
                     for start, end, stage in segments:
                         fig.add_vrect(x0=start, x1=end, fillcolor=STAGE_COLORS.get(stage, "#eee"), opacity=0.4,
                                       layer="below", line_width=0, row=row_idx, col=1)
 
+                # Range should cover full weeks (from first Sunday to last Sunday)
                 max_date = df['week_date'].max()
                 fig.update_layout(
                     height=1000,
