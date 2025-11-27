@@ -25,7 +25,6 @@ STAGE_COLORS = {
 
 # --- Helper: Smart Random Picker ---
 def get_random_repo_url():
-    """Finds a valid GitHub URL from the local RSD CSV."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_files = glob.glob(os.path.join(current_dir, "01_rsd_*.csv"))
     if not csv_files:
@@ -55,45 +54,35 @@ def get_random_repo_url():
         return None
 
 
-# --- [NEW] Helper: Limitations & Notes (Top Section) ---
+# --- Helper: Limitations (Normal Font Size) ---
 def show_limitations():
-    """Displays important methodological notes and limitations."""
+    """Displays notes with normal font size (no headers)."""
     with st.expander("⚠️ Important Notes & Limitations (Read before use)", expanded=False):
         st.markdown("""
-        **This tool uses unsupervised machine learning (K-Means Clustering) to explore lifecycle patterns.** Please be aware of the following limitations regarding data and algorithms:
+        **This tool uses unsupervised machine learning (K-Means Clustering) to explore lifecycle patterns.**
 
-        #### 1. Dataset Bias & Scope
-        * [cite_start]**Academic Focus:** The model is trained on ~500 research software projects from the Research Software Directory (RSD)[cite: 145]. It is optimized for academic tools.
-        * **Not for Mega-Projects:** It may not accurately represent large-scale commercial software or massive open-source communities (e.g., Linux, React). [cite_start]Results for high-frequency, non-research projects may be biased[cite: 164].
+        **1. Dataset Bias & Scope**
+        The model is trained on ~500 research software projects from the Research Software Directory (RSD). It is optimized for academic tools and may not accurately represent large-scale commercial software or massive open-source communities.
 
-        #### 2. Data Sparsity & Short Lifecycles
-        * **Ad-hoc Nature:** Research software is often task-oriented. [cite_start]Many projects have very few commits (e.g., updated only once before publication)[cite: 115].
-        * [cite_start]**Limited Recognition:** For such **low-activity** projects, the algorithm might not detect complex transitions, often classifying the entire lifecycle simply as "Baseline" or "Dormant"[cite: 209].
+        **2. Data Sparsity & Short Lifecycles**
+        Research software is often task-oriented (Ad-hoc). Many projects have very few commits. For such low-activity projects, the algorithm might simply classify the entire lifecycle as "Baseline" or "Dormant".
 
-        #### 3. Non-Linear Lifecycles
-        * [cite_start]**Not a Progression:** Note that **not every project goes through every stage**[cite: 116].
-        * **Diverse Trajectories:** Our analysis shows many research tools never reach "Peak Activity" or "Maintenance". They often stay in "Baseline" until "Dead". [cite_start]This reflects the reality of research development, not an algorithm error[cite: 331].
+        **3. Non-Linear Lifecycles**
+        Not every project goes through every stage. Our analysis shows many research tools never reach "Peak Activity". They often stay in "Baseline" until "Dead". This reflects the reality of research development.
 
-        #### 4. Visual Logic: 8-Week Rolling Window
-        * [cite_start]**Y-Axis Meaning:** The values shown (e.g., Commits) are the **cumulative sum over the past 8 weeks**, not weekly data[cite: 552].
-        * **Why?** This smooths out the "sporadic" nature of research commits to reveal **medium-term momentum**. [cite_start]Note that this introduces a slight visual lag[cite: 560].
+        **4. Visual Logic: 8-Week Rolling Window**
+        The values shown (e.g., Commits) are the **cumulative sum over the past 8 weeks**. This smooths out sporadic activities to reveal medium-term momentum, but introduces a slight visual lag.
 
-        #### 5. Visual Smoothing Artifacts
-        * **Curves vs. Colors:** The plotted lines undergo additional smoothing (Window=3) for visual clarity. You might notice slight misalignments between curve inflection points and background color changes. 
-        * [cite_start]**Check Data:** For precise numbers, please always refer to the **"Raw Data"** table at the bottom[cite: 572].
+        **5. Visual Smoothing Artifacts**
+        The plotted lines undergo additional smoothing (Window=3) for visual clarity. You might notice slight misalignments between curve inflection points and background color changes. Check the "Raw Data" table for precise numbers.
 
-        #### 6. Interpreting Clusters (Relative Definitions)
-        * [cite_start]**Feature-Driven:** Stage names are based on clustering feature distributions[cite: 61].
-        * **Why do some stages look similar?** Some stages may look similar in Commits but differ in **other signals**:
-            * **Baseline:** Routine, low-volume development (Low commits, almost zero Issue interaction).
-            * [cite_start]**Maintenance:** Distinct signs of maintenance (**High Issue activity** for bug fixing, but no new Feature Releases)[cite: 366].
-            * [cite_start]**Dormant:** Alive but inactive (distinct from Dead)[cite: 423].
+        **6. Interpreting Clusters (Relative Definitions)**
+        Stage names are based on clustering feature distributions. Some stages look similar in Commits but differ in **other signals** (e.g., "Maintenance" has high Issue activity but no new Releases; "Baseline" has low activity across the board).
         """)
 
 
-# --- Helper: Stage Definitions (Moved to Bottom) ---
+# --- Helper: Stage Definitions (Table) ---
 def show_stage_definitions():
-    # Renamed title to be less definitive
     with st.expander("📖 Stage Descriptions (Click to expand)"):
         st.markdown("""
         <style>
@@ -161,7 +150,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.6")
+    st.caption("🚀 Version updated: 0.2.7")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -181,11 +170,7 @@ def main():
         else:
             st.toast("⚠️ Could not find a valid repo.", icon="❌")
 
-    # --- SECTION 1: LIMITATIONS (Top) ---
-    show_limitations()
-    st.markdown("---")  # Divider line
-
-    # --- SECTION 2: INPUT ---
+    # --- SECTION 1: INPUT (Top) ---
     col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
         repo_url = st.text_input(
@@ -199,8 +184,10 @@ def main():
     with col3:
         st.button("🎲 Random", on_click=pick_random_and_run, use_container_width=True, help="Auto-pick and analyze")
 
-    # --- SECTION 3: STAGE DESCRIPTIONS (Moved Here) ---
-    # Placed right after buttons so it's close to the generated chart
+    # --- SECTION 2: NOTICES ---
+    show_limitations()
+
+    # --- SECTION 3: DESCRIPTIONS ---
     show_stage_definitions()
 
     # --- LOGIC ---
