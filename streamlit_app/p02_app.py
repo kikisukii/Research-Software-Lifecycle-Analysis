@@ -131,68 +131,63 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.1.9")
+    st.caption("🚀 Version updated: 0.2.0")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
         st.stop()
     token = st.secrets["GITHUB_TOKEN"]
 
-    # --- Init Session State ---
     if 'repo_url_input' not in st.session_state:
         st.session_state.repo_url_input = ""
 
-    # Magic Switch: If True, the app runs analysis immediately after reload
     if 'trigger_auto_analyze' not in st.session_state:
         st.session_state.trigger_auto_analyze = False
 
-    # --- Callback for Random Button ---
     def pick_random_and_run():
         url = get_random_repo_url()
         if url:
             st.session_state.repo_url_input = url
-            # Turn on the switch!
             st.session_state.trigger_auto_analyze = True
         else:
             st.toast("⚠️ Could not find a valid repo.", icon="❌")
 
-    # --- UI Layout: Compact Row ---
-    # col1: Input (Wide) | col2: Analyze | col3: Random
     col1, col2, col3 = st.columns([5, 1, 1])
-
     with col1:
         repo_url = st.text_input(
             "GitHub URL",
             placeholder="https://github.com/owner/repo",
             key="repo_url_input",
-            label_visibility="collapsed"  # Hide label to align with buttons
+            label_visibility="collapsed"
         )
     with col2:
-        # Normal Analyze Button
         manual_run = st.button("🚀 Analyze", type="primary", use_container_width=True)
     with col3:
-        # Random Button triggers the callback
         st.button("🎲 Random", on_click=pick_random_and_run, use_container_width=True, help="Auto-pick and analyze")
 
-    # Show definitions below input
     show_stage_definitions()
 
-    # --- Logic: Run if Button Clicked OR Auto-Trigger is ON ---
     should_run = manual_run or (st.session_state.trigger_auto_analyze and repo_url)
 
     if should_run:
-        # Important: Turn off the switch immediately so it doesn't re-run on next interaction
         st.session_state.trigger_auto_analyze = False
 
-        with st.spinner("Fetching & Analyzing..."):
-            try:
+        try:
+            # --- STEP 1: Heavy Lifting (Inference) ---
+            # Using a spinner only for the download/calc part
+            with st.spinner("Fetching & Analyzing (Git Clone + API)..."):
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
                 df = run_git_analysis(repo_url, model_path, token)
 
-                st.success(f"Analysis complete! Weeks: {len(df)}")
+            # --- Feedback & Guide ---
+            st.success(f"Analysis complete! Weeks: {len(df)}")
+            # Explicit hint for raw data
+            st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
 
-                # --- Visualization ---
+            # --- STEP 2: Visualization (Rendering) ---
+            # A separate spinner for drawing the complex chart
+            with st.spinner("Generating visualization..."):
                 c8_s = smooth_series(df['commits_8w_sum'])
                 u8_s = smooth_series(df['contributors_8w_unique'])
                 i8_s = smooth_series(df['issues_closed_8w_count'])
@@ -274,11 +269,13 @@ def main():
                 fig.update_yaxes(**common_axis)
 
                 st.plotly_chart(fig, use_container_width=True)
+
+                # --- Raw Data Expander ---
                 with st.expander("View Raw Data"):
                     st.dataframe(df)
 
-            except Exception as e:
-                st.error(f"Analysis failed: {str(e)}")
+        except Exception as e:
+            st.error(f"Analysis failed: {str(e)}")
 
 
 if __name__ == "__main__":
