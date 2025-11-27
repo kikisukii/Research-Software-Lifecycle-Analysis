@@ -5,10 +5,10 @@ from plotly.subplots import make_subplots
 import os
 from p01_inference import run_git_analysis
 
-# Page Config
+# Page Config (Layout wide)
 st.set_page_config(page_title="Research Software Lifecycle Detector", layout="wide")
 
-# Colors (V2 Standard Palette)
+# --- 1. Colors (V2 Palette - Pastel/Clean) ---
 STAGE_COLORS = {
     "Baseline": "#f8b862",
     "Internal Development": "#38b48b",
@@ -39,15 +39,15 @@ def build_segments(df):
 
 
 def smooth_series(series, window=3):
-    """Apply visual smoothing matching V2 local script."""
+    """Apply slight visual smoothing (V2 standard)."""
     return series.rolling(window=window, center=True, min_periods=1).mean()
 
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
 
-    # --- Version Tag ---
-    st.caption("🚀 Version updated: 0.0.5")
+    # --- Version Tag (For your verification) ---
+    st.caption("🚀 Version updated: 0.0.6")
     # -------------------
 
     if "GITHUB_TOKEN" not in st.secrets:
@@ -65,9 +65,9 @@ def main():
         run_btn = st.button("🚀 Analyze", type="primary")
 
     if run_btn and repo_url:
-        with st.spinner("Cloning repo & Fetching API (Issues/Releases)... This takes time..."):
+        with st.spinner("Fetching Data & Analyzing..."):
             try:
-                # 1. Setup Path
+                # 1. Path Setup
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
 
@@ -76,101 +76,104 @@ def main():
 
                 st.success(f"Analysis complete! Weeks: {len(df)}")
 
-                # --- Visualization: Exact V2 Replica ---
+                # --- Visualization: High Contrast 4-Row Plot ---
 
-                # Create 4 rows with generous spacing
+                # Create 4 rows
                 fig = make_subplots(
                     rows=4, cols=1,
                     shared_xaxes=True,
-                    vertical_spacing=0.08,  # Increase gap between charts
+                    vertical_spacing=0.06,  # Nice gap between plots
                     subplot_titles=(
                         "Commits (8w rolling)",
-                        "Active Contributors (8w rolling)",
+                        "Contributors (8w rolling)",
                         "Issues Closed (8w rolling)",
                         "Releases (8w rolling)"
                     )
                 )
 
-                # Apply Smoothing (Window=3) to match V2 local plots
-                c8_smooth = smooth_series(df['commits_8w_sum'])
-                u8_smooth = smooth_series(df['contributors_8w_unique'])
-                i8_smooth = smooth_series(df['issues_closed_8w_count'])
-                # Releases usually don't need much smoothing, but consistent style helps
-                r8_smooth = df['releases_8w_count']
+                # Smoothing
+                c8 = smooth_series(df['commits_8w_sum'])
+                u8 = smooth_series(df['contributors_8w_unique'])
+                i8 = smooth_series(df['issues_closed_8w_count'])
+                r8 = df['releases_8w_count']  # No smoothing for releases
 
-                # --- Metric 1: Commits (Row 1) ---
+                # --- Traces (Lines) ---
+                # Row 1: Commits (Dark Grey)
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=c8_smooth,
-                    mode='lines', line=dict(color='#333333', width=1.8),
-                    name='Commits',
-                    customdata=df['stage_name'],
-                    hovertemplate="<b>Week:</b> %{x}<br><b>Commits:</b> %{y:.1f}<br><b>Phase:</b> %{customdata}<extra></extra>"
+                    x=df['week_date'], y=c8,
+                    mode='lines', line=dict(color='#333333', width=2),
+                    name='Commits', customdata=df['stage_name'],
+                    hovertemplate="Week: %{x}<br>Commits: %{y:.1f}<br>Phase: %{customdata}<extra></extra>"
                 ), row=1, col=1)
 
-                # --- Metric 2: Contributors (Row 2) ---
+                # Row 2: Contributors (Blue)
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=u8_smooth,
-                    mode='lines', line=dict(color='#1f77b4', width=1.5),  # Blue
+                    x=df['week_date'], y=u8,
+                    mode='lines', line=dict(color='#1f77b4', width=2),
                     name='Contributors',
-                    hovertemplate="<b>Contribs:</b> %{y:.1f}<extra></extra>"
+                    hovertemplate="Contribs: %{y:.1f}<extra></extra>"
                 ), row=2, col=1)
 
-                # --- Metric 3: Issues (Row 3) ---
+                # Row 3: Issues (Orange)
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=i8_smooth,
-                    mode='lines', line=dict(color='#ff7f0e', width=1.5),  # Orange
-                    name='Issues Closed',
-                    hovertemplate="<b>Issues:</b> %{y:.1f}<extra></extra>"
+                    x=df['week_date'], y=i8,
+                    mode='lines', line=dict(color='#ff7f0e', width=2),
+                    name='Issues',
+                    hovertemplate="Issues: %{y:.1f}<extra></extra>"
                 ), row=3, col=1)
 
-                # --- Metric 4: Releases (Row 4) ---
+                # Row 4: Releases (Purple, Dashed, NO FILL)
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=r8_smooth,
-                    mode='lines', line=dict(color='#9467bd', width=1.5),  # Purple
-                    fill='tozeroy',  # Fill slightly to mimic density
+                    x=df['week_date'], y=r8,
+                    mode='lines', line=dict(color='#9467bd', width=2, dash='dot'),  # Dashed line only
                     name='Releases',
-                    hovertemplate="<b>Releases:</b> %{y}<extra></extra>"
+                    hovertemplate="Releases: %{y}<extra></extra>"
                 ), row=4, col=1)
 
-                # --- Background Colors (Clean Shapes) ---
+                # --- Background Colors (Per Subplot) ---
                 segments = build_segments(df)
-                shapes = []
-                for start, end, stage in segments:
-                    shapes.append(dict(
-                        type="rect",
-                        xref="x", yref="paper",  # Span full height
-                        x0=start, x1=end,
-                        y0=0, y1=1,
-                        fillcolor=STAGE_COLORS.get(stage, "#eee"),
-                        opacity=0.35,
-                        layer="below",
-                        line_width=0  # CRITICAL: Removes the black vertical lines
-                    ))
 
+                # Loop through each subplot row (1 to 4) to add vrects
+                # This ensures colors stay INSIDE the box, not in the gaps
+                for row_idx in range(1, 5):
+                    for start, end, stage in segments:
+                        fig.add_vrect(
+                            x0=start, x1=end,
+                            fillcolor=STAGE_COLORS.get(stage, "#eee"),
+                            opacity=0.3,  # Lighter opacity for better readability
+                            layer="below",
+                            line_width=0,
+                            row=row_idx, col=1
+                        )
+
+                # --- Layout: Force "Academic White" ---
                 fig.update_layout(
-                    title=f"Lifecycle Timeline (v2): {repo_url}",
-                    height=1000,  # Taller: 1000px to avoid squashing
-                    shapes=shapes,
+                    title=dict(text=f"Lifecycle Timeline (v2): {repo_url}", font=dict(color="black", size=20)),
+                    height=1000,
                     hovermode="x unified",
-                    template="plotly_white",
-                    paper_bgcolor="white",
-                    plot_bgcolor="white",
+                    template="plotly_white",  # Base template
+                    paper_bgcolor="white",  # Force white background outside
+                    plot_bgcolor="white",  # Force white background inside
                     margin=dict(l=60, r=40, t=80, b=60),
-                    showlegend=False
+                    showlegend=False,
+                    font=dict(color="black")  # Force ALL text to be black
                 )
 
-                # --- Clean Axes (Remove black lines, keep grid) ---
-                common_axis_config = dict(
-                    showgrid=True,
-                    gridcolor='#eeeeee',  # Light grey grid
-                    zeroline=False,  # Remove the thick zero line
-                    showline=True,  # Keep outer frame
-                    linecolor='#cccccc',  # Light frame
-                    mirror=True
+                # --- Axis Styling (Sharp Black Lines) ---
+                common_axis = dict(
+                    showgrid=True, gridcolor='#f0f0f0',  # Very light grid
+                    zeroline=False,
+                    showline=True, linecolor='black', linewidth=1,  # Black border
+                    mirror=True,
+                    tickfont=dict(color='black', size=12),  # Sharp black ticks
+                    title_font=dict(color='black')
                 )
 
-                fig.update_xaxes(**common_axis_config)
-                fig.update_yaxes(**common_axis_config)
+                fig.update_xaxes(**common_axis)
+                fig.update_yaxes(**common_axis)
+
+                # Specific Y-axis titles
+                fig.update_yaxes(title_text="Count", row=2, col=1)
 
                 st.plotly_chart(fig, use_container_width=True)
 
