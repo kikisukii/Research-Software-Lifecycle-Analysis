@@ -21,12 +21,10 @@ STAGE_COLORS = {
 }
 
 
-# --- Helper: Stage Definitions (Table Layout) ---
+# --- Helper: Stage Definitions (Wider Table) ---
 def show_stage_definitions():
     """Displays an expander with a clean HTML table for definitions."""
     with st.expander("📖 How to interpret the stages? (Click to expand)"):
-        # We use raw HTML to create a perfectly aligned grid (Table)
-        # <td> widths are set to ensure the 'Description' column aligns perfectly vertically.
         st.markdown("""
         <style>
             .stage-row td { padding-bottom: 5px; vertical-align: top; }
@@ -34,7 +32,7 @@ def show_stage_definitions():
         <table style="width:100%; border:none; border-collapse:collapse;">
             <tr class="stage-row">
                 <td width="30" style="font-size:1.2em; color:#e9546b">■</td>
-                <td width="160"><b>Peak Activity</b></td>
+                <td width="220"><b>Peak Activity</b></td>
                 <td>High intensity & delivery. All metrics are high.</td>
             </tr>
             <tr class="stage-row">
@@ -97,7 +95,7 @@ def smooth_series(series, window=3):
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
     # --- Version Tag ---
-    st.caption("🚀 Version updated: 0.1.5")
+    st.caption("🚀 Version updated: 0.1.6")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -114,7 +112,7 @@ def main():
         st.write("")
         run_btn = st.button("🚀 Analyze", type="primary")
 
-    # --- 2. Stage Definitions (Table Format) ---
+    # --- 2. Stage Definitions (Wider Table) ---
     show_stage_definitions()
 
     # --- 3. Analysis ---
