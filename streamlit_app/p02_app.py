@@ -59,7 +59,7 @@ def show_limitations():
     """Displays notes with normal font size (no headers)."""
     with st.expander("⚠️ Important Notes & Limitations (Read before use)", expanded=False):
         st.markdown("""
-        **This tool uses unsupervised machine learning (K-Means Clustering) to explore lifecycle patterns.**
+        **This tool uses unsupervised machine learning to explore lifecycle patterns.**
 
         **1. Dataset Bias & Scope**
         The model is trained on ~500 research software projects from the Research Software Directory (RSD). It is optimized for academic tools and may not accurately represent large-scale commercial software or massive open-source communities.
