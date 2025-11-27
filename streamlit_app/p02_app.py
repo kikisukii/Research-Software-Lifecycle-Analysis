@@ -131,7 +131,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.1")
+    st.caption("🚀 Version updated: 0.2.2")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -174,7 +174,6 @@ def main():
 
         try:
             # --- STEP 1: Inference ---
-            # [FIX 1] Simplified text
             with st.spinner("Fetching & Analyzing..."):
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
@@ -205,8 +204,15 @@ def main():
                         "<extra></extra>"
                 )
 
+                # --- [MODIFIED] Render Order ---
+                # 1. Title
                 st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
 
+                # 2. Messages (Success & Hint) - NOW VISIBLE AT TOP
+                st.success(f"Analysis complete! Weeks: {len(df)}")
+                st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
+
+                # 3. Chart
                 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
                 fig.add_trace(go.Scatter(x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
@@ -264,10 +270,7 @@ def main():
 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # [FIX 2] Messages appear AFTER chart
-                st.success(f"Analysis complete! Weeks: {len(df)}")
-                st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
-
+                # 4. Expander at bottom
                 with st.expander("View Raw Data"):
                     st.dataframe(df)
 
