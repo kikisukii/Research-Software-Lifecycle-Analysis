@@ -45,4 +45,4 @@ v2_data/
 **/_gitcache/
 
 #Keep RSD list for Web Toll
-!streamlit_app
+!streamlit_app/01_rsd_software_all_20251124_170440.csv
