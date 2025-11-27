@@ -131,7 +131,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.2")
+    st.caption("🚀 Version updated: 0.2.3")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -179,6 +179,13 @@ def main():
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
                 df = run_git_analysis(repo_url, model_path, token)
 
+            # --- UI LAYOUT PREPARATION ---
+            st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
+
+            # [CRITICAL] Create an empty container AT THE TOP (below title)
+            # This reserves space for the messages, but we won't fill it yet.
+            msg_container = st.container()
+
             # --- STEP 2: Visualization ---
             with st.spinner("Generating visualization..."):
                 c8_s = smooth_series(df['commits_8w_sum'])
@@ -204,15 +211,6 @@ def main():
                         "<extra></extra>"
                 )
 
-                # --- [MODIFIED] Render Order ---
-                # 1. Title
-                st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
-
-                # 2. Messages (Success & Hint) - NOW VISIBLE AT TOP
-                st.success(f"Analysis complete! Weeks: {len(df)}")
-                st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
-
-                # 3. Chart
                 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
                 fig.add_trace(go.Scatter(x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
@@ -268,15 +266,13 @@ def main():
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
+                # [ACTION 1] Fill the top container with messages NOW (Success!)
+                with msg_container:
+                    st.success(f"Analysis complete! Weeks: {len(df)}")
+                    st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
+
+                # [ACTION 2] Render the chart BELOW the container
                 st.plotly_chart(fig, use_container_width=True)
 
-                # 4. Expander at bottom
-                with st.expander("View Raw Data"):
-                    st.dataframe(df)
-
-        except Exception as e:
-            st.error(f"Analysis failed: {str(e)}")
-
-
-if __name__ == "__main__":
-    main()
+                # Raw Data at bottom
+                with st.expander
