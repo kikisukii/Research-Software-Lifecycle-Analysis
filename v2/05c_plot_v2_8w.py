@@ -52,10 +52,10 @@ LEGEND_ORDER = [
 
 # [Mod 1]: Update labels to explicitly state "8-week rolling" to avoid ambiguity
 METRICS = [
-    ("commits_8w_sum", "Commits (8-week rolling)"),
-    ("contributors_8w_unique", "Contributors (8-week rolling)"),
-    ("issues_closed_8w_count", "Issues Closed (8-week rolling)"),
-    ("releases_8w_count", "Releases (8-week rolling)"),
+    ("commits_8w_sum", "Commits (8w rolling)"),
+    ("contributors_8w_unique", "Contributors (8w rolling)"),
+    ("issues_closed_8w_count", "Issues Closed (8w rolling)"),
+    ("releases_8w_count", "Releases (8w rolling)"),
 ]
 
 MIN_WIDTH, MAX_WIDTH = 8.0, 22.0
