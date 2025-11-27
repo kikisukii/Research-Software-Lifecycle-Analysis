@@ -1,14 +1,15 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 from p01_inference import run_git_analysis
 
-# Page Config (Layout wide)
+# Page Config
 st.set_page_config(page_title="Research Software Lifecycle Detector", layout="wide")
 
-# --- 1. Colors (V2 Palette - Pastel/Clean) ---
+# --- Colors (V2 Standard) ---
 STAGE_COLORS = {
     "Baseline": "#f8b862",
     "Internal Development": "#38b48b",
@@ -31,6 +32,7 @@ def build_segments(df):
     for i in range(1, len(df)):
         stage = df.iloc[i]["stage_name"]
         if stage != current_stage:
+            # Use current week as end to ensure continuity (no gaps)
             segments.append((start_date, df.iloc[i]["week_date"], current_stage))
             current_stage = stage
             start_date = df.iloc[i]["week_date"]
@@ -39,19 +41,16 @@ def build_segments(df):
 
 
 def smooth_series(series, window=3):
-    """Apply slight visual smoothing (V2 standard)."""
+    """V2 Smoothing logic."""
     return series.rolling(window=window, center=True, min_periods=1).mean()
 
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-
-    # --- Version Tag (For your verification) ---
-    st.caption("🚀 Version updated: 0.0.6")
-    # -------------------
+    st.caption("🚀 Version updated: 0.0.7")
 
     if "GITHUB_TOKEN" not in st.secrets:
-        st.error("⚠️ GitHub Token missing! Please add 'GITHUB_TOKEN' in Streamlit Secrets.")
+        st.error("⚠️ GitHub Token missing in Secrets.")
         st.stop()
 
     token = st.secrets["GITHUB_TOKEN"]
@@ -65,115 +64,129 @@ def main():
         run_btn = st.button("🚀 Analyze", type="primary")
 
     if run_btn and repo_url:
-        with st.spinner("Fetching Data & Analyzing..."):
+        with st.spinner("Fetching & Analyzing (Git Clone + API)..."):
             try:
-                # 1. Path Setup
+                # 1. Inference
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
-
-                # 2. Run Inference
                 df = run_git_analysis(repo_url, model_path, token)
 
                 st.success(f"Analysis complete! Weeks: {len(df)}")
 
-                # --- Visualization: High Contrast 4-Row Plot ---
+                # --- Data Prep for Visualization ---
+                # Smooth curves
+                df['c8_s'] = smooth_series(df['commits_8w_sum'])
+                df['u8_s'] = smooth_series(df['contributors_8w_unique'])
+                df['i8_s'] = smooth_series(df['issues_closed_8w_count'])
+                df['r8_s'] = df['releases_8w_count']  # No smooth for releases
 
-                # Create 4 rows
+                # Prepare Custom Data for Hover
+                # We stack all info into a single array so EVERY trace knows everything
+                # Structure: [Stage, Commits, Contribs, Issues, Releases]
+                custom_data = np.stack((
+                    df['stage_name'],
+                    df['c8_s'].round(1),
+                    df['u8_s'].round(1),
+                    df['i8_s'].round(1),
+                    df['r8_s']
+                ), axis=-1)
+
+                # Define the Universal Hover Template
+                # This ensures that no matter which line you hover, you see the full context
+                hover_template = (
+                        "<b>Week:</b> %{x|%Y-%m-%d}<br>" +
+                        "<b>Stage:</b> %{customdata[0]}<br>" +
+                        "<br>" +
+                        "Commits: %{customdata[1]}<br>" +
+                        "Contributors: %{customdata[2]}<br>" +
+                        "Issues Closed: %{customdata[3]}<br>" +
+                        "Releases: %{customdata[4]}" +
+                        "<extra></extra>"  # Hides the trace name box on the side
+                )
+
+                # --- Visualization ---
                 fig = make_subplots(
                     rows=4, cols=1,
                     shared_xaxes=True,
-                    vertical_spacing=0.06,  # Nice gap between plots
-                    subplot_titles=(
-                        "Commits (8w rolling)",
-                        "Contributors (8w rolling)",
-                        "Issues Closed (8w rolling)",
-                        "Releases (8w rolling)"
-                    )
+                    vertical_spacing=0.03,  # Tighter gap
+                    subplot_titles=("Commits", "Contributors", "Issues", "Releases")
                 )
 
-                # Smoothing
-                c8 = smooth_series(df['commits_8w_sum'])
-                u8 = smooth_series(df['contributors_8w_unique'])
-                i8 = smooth_series(df['issues_closed_8w_count'])
-                r8 = df['releases_8w_count']  # No smoothing for releases
-
-                # --- Traces (Lines) ---
-                # Row 1: Commits (Dark Grey)
+                # Row 1: Commits
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=c8,
+                    x=df['week_date'], y=df['c8_s'],
                     mode='lines', line=dict(color='#333333', width=2),
-                    name='Commits', customdata=df['stage_name'],
-                    hovertemplate="Week: %{x}<br>Commits: %{y:.1f}<br>Phase: %{customdata}<extra></extra>"
+                    name='Commits', customdata=custom_data, hovertemplate=hover_template
                 ), row=1, col=1)
 
-                # Row 2: Contributors (Blue)
+                # Row 2: Contributors
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=u8,
+                    x=df['week_date'], y=df['u8_s'],
                     mode='lines', line=dict(color='#1f77b4', width=2),
-                    name='Contributors',
-                    hovertemplate="Contribs: %{y:.1f}<extra></extra>"
+                    name='Contributors', customdata=custom_data, hovertemplate=hover_template
                 ), row=2, col=1)
 
-                # Row 3: Issues (Orange)
+                # Row 3: Issues
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=i8,
+                    x=df['week_date'], y=df['i8_s'],
                     mode='lines', line=dict(color='#ff7f0e', width=2),
-                    name='Issues',
-                    hovertemplate="Issues: %{y:.1f}<extra></extra>"
+                    name='Issues', customdata=custom_data, hovertemplate=hover_template
                 ), row=3, col=1)
 
-                # Row 4: Releases (Purple, Dashed, NO FILL)
+                # Row 4: Releases (Solid Line now, no dash)
                 fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=r8,
-                    mode='lines', line=dict(color='#9467bd', width=2, dash='dot'),  # Dashed line only
-                    name='Releases',
-                    hovertemplate="Releases: %{y}<extra></extra>"
+                    x=df['week_date'], y=df['r8_s'],
+                    mode='lines', line=dict(color='#9467bd', width=2),  # Solid purple
+                    name='Releases', customdata=custom_data, hovertemplate=hover_template
                 ), row=4, col=1)
 
-                # --- Background Colors (Per Subplot) ---
+                # --- Background Colors ---
                 segments = build_segments(df)
-
-                # Loop through each subplot row (1 to 4) to add vrects
-                # This ensures colors stay INSIDE the box, not in the gaps
+                # Loop through 4 subplots
                 for row_idx in range(1, 5):
                     for start, end, stage in segments:
                         fig.add_vrect(
                             x0=start, x1=end,
                             fillcolor=STAGE_COLORS.get(stage, "#eee"),
-                            opacity=0.3,  # Lighter opacity for better readability
+                            opacity=0.4,  # Slightly more opaque
                             layer="below",
-                            line_width=0,
+                            line_width=0,  # Removes vertical white lines
                             row=row_idx, col=1
                         )
 
-                # --- Layout: Force "Academic White" ---
+                # --- Layout: Perfect Border & Layout ---
+                # Lock X-axis range to remove white padding on sides
+                min_date = df['week_date'].min()
+                max_date = df['week_date'].max()
+
                 fig.update_layout(
-                    title=dict(text=f"Lifecycle Timeline (v2): {repo_url}", font=dict(color="black", size=20)),
+                    title=dict(text=f"Lifecycle Timeline (v2): {repo_url}", font=dict(color="black", size=18)),
                     height=1000,
-                    hovermode="x unified",
-                    template="plotly_white",  # Base template
-                    paper_bgcolor="white",  # Force white background outside
-                    plot_bgcolor="white",  # Force white background inside
+                    hovermode="x",  # Simple x-line hover
+                    template="plotly_white",
+                    paper_bgcolor="white",
+                    plot_bgcolor="white",
                     margin=dict(l=60, r=40, t=80, b=60),
-                    showlegend=False,
-                    font=dict(color="black")  # Force ALL text to be black
+                    showlegend=False
                 )
 
-                # --- Axis Styling (Sharp Black Lines) ---
+                # Axis Styling: Remove inner Grid, Keep outer Box
                 common_axis = dict(
-                    showgrid=True, gridcolor='#f0f0f0',  # Very light grid
+                    showgrid=False,  # REMOVES THE WHITE GRID LINES inside color blocks
                     zeroline=False,
-                    showline=True, linecolor='black', linewidth=1,  # Black border
-                    mirror=True,
-                    tickfont=dict(color='black', size=12),  # Sharp black ticks
-                    title_font=dict(color='black')
+                    showline=True, linecolor='black', linewidth=1,  # Sharp black border
+                    mirror=True,  # Border on all 4 sides
+                    tickfont=dict(color='black', size=11),
+                    range=[min_date, max_date]  # LOCKS the range (No white side gaps)
                 )
 
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
-                # Specific Y-axis titles
-                fig.update_yaxes(title_text="Count", row=2, col=1)
+                # Keep horizontal grid only for readability? Optional.
+                # User asked for "no strange white lines", usually vertical grid causes this.
+                # Let's enable Horizontal Grid ONLY, disable Vertical.
+                fig.update_yaxes(showgrid=True, gridcolor='#e5e5e5', gridwidth=1)
 
                 st.plotly_chart(fig, use_container_width=True)
 
