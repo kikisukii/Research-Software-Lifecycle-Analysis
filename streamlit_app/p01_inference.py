@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-p01_inference.py (Full V2 Logic)
+p01_inference.py (Full V2 Logic + Raw Weekly Contributors)
 Objective:
-  1. Git clone (bare) -> Extract Commits (Full History) & Authors (for Contributors).
-  2. GitHub API -> Extract Issues (exclude PRs) & Releases.
+  1. Git clone (bare) -> Extract Commits & Authors.
+  2. GitHub API -> Extract Issues & Releases.
   3. Reconstruct exact v2 8-week rolling features.
   4. Apply PCA+KMeans model for inference.
 """
@@ -20,7 +20,6 @@ from datetime import datetime, timedelta, timezone
 from collections import deque, Counter
 
 
-# Helper: Align timestamp to the preceding Sunday 00:00 UTC
 def week_start_sunday_unix(dt_utc):
     offset = (dt_utc.weekday() + 1) % 7
     wk = dt_utc - timedelta(days=offset)
@@ -28,7 +27,6 @@ def week_start_sunday_unix(dt_utc):
     return int(wk.timestamp())
 
 
-# API Helper: Fetch all pages from GitHub API with pagination
 def fetch_github_api(url, token):
     headers = {
         "Authorization": f"Bearer {token}",
@@ -45,7 +43,6 @@ def fetch_github_api(url, token):
             if not data:
                 break
             results.extend(data)
-            # Handle pagination via 'link' header
             url = resp.links.get("next", {}).get("url")
         except Exception as e:
             print(f"[WARN] API Fetch Error: {e}")
@@ -54,19 +51,10 @@ def fetch_github_api(url, token):
 
 
 def run_git_analysis(repo_url, model_bundle_path, github_token):
-    """
-    Execute the Full V2 Pipeline:
-    1. Clone repo to get Commits and Contributors (Emails).
-    2. Query API to get Issues and Releases.
-    3. Calculate 8-week rolling metrics aligned with V2 training logic.
-    4. Predict lifecycle stages using the pre-trained PCA+KMeans bundle.
-    """
-
-    # 1. Load the frozen Model Bundle
+    # 1. Load Model
     with open(model_bundle_path, "rb") as f:
         bundle = pickle.load(f)
 
-    # Unpack model components
     scaler_mean = bundle["scaler"]["mean"]
     scaler_scale = bundle["scaler"]["scale"]
     pca_comps = bundle["pca"]["components"]
@@ -76,7 +64,7 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
     label_map = bundle["label_map"]
     features_list = bundle["features"]
 
-    # Parse Owner/Repo from URL
+    # Parse Owner/Repo
     if "github.com" not in repo_url:
         raise ValueError("Only GitHub URLs are supported.")
     parts = repo_url.strip("/").split("/")
@@ -84,20 +72,13 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
     if owner_repo.endswith(".git"):
         owner_repo = owner_repo[:-4]
 
-    # --- PHASE A: Git Clone (Commits & Contributors) ---
+    # --- PHASE A: Git Clone ---
     temp_dir = tempfile.mkdtemp()
-
     commit_timestamps = []
-    commit_authors = []  # List of (timestamp, email)
+    commit_authors = []
 
     try:
-        # Clone bare repository to save space
-        subprocess.run(
-            ["git", "clone", "--bare", "--filter=blob:none", "--quiet", repo_url, temp_dir],
-            check=True
-        )
-
-        # Extract Log: Timestamp + Email
+        subprocess.run(["git", "clone", "--bare", "--filter=blob:none", "--quiet", repo_url, temp_dir], check=True)
         cmd = ["git", "--git-dir", temp_dir, "log", "--all", "--date-order", "--pretty=%ct|%ae"]
         result = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
 
@@ -116,22 +97,17 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     if not commit_timestamps:
-        raise ValueError("No commits found in repository.")
+        raise ValueError("No commits found.")
 
-    # --- PHASE B: API Fetch (Issues & Releases) ---
-    # Fetch Issues (excluding Pull Requests logic handles downstream)
+    # --- PHASE B: API Fetch ---
     issues_url = f"https://api.github.com/repos/{owner_repo}/issues?state=all&per_page=100&sort=created&direction=asc"
     raw_issues = fetch_github_api(issues_url, github_token)
-
-    # Filter out PRs and extract closed dates
     issue_closed_timestamps = []
     for item in raw_issues:
-        # V2 Logic: Explicitly exclude PRs, only count closed issues
         if "pull_request" not in item and item["state"] == "closed" and item["closed_at"]:
             dt = datetime.fromisoformat(item["closed_at"].replace("Z", "+00:00"))
             issue_closed_timestamps.append(int(dt.timestamp()))
 
-    # Fetch Releases
     releases_url = f"https://api.github.com/repos/{owner_repo}/releases?per_page=100"
     raw_releases = fetch_github_api(releases_url, github_token)
     release_timestamps = []
@@ -140,43 +116,37 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
             dt = datetime.fromisoformat(item["published_at"].replace("Z", "+00:00"))
             release_timestamps.append(int(dt.timestamp()))
 
-    # --- PHASE C: Weekly Aggregation (Aligned with V2) ---
+    # --- PHASE C: Weekly Aggregation ---
     min_ts = min(commit_timestamps)
-    max_ts = datetime.now(timezone.utc).timestamp()  # Calculate up to current date
+    max_ts = datetime.now(timezone.utc).timestamp()
 
     start_dt = datetime.fromtimestamp(week_start_sunday_unix(datetime.fromtimestamp(min_ts, timezone.utc)),
                                       timezone.utc)
     end_dt = datetime.fromtimestamp(max_ts, timezone.utc)
     grid = pd.date_range(start_dt, end_dt, freq="W-SUN", tz="UTC")
 
-    # Prepare Buckets
     week_commits = Counter()
     week_issues = Counter()
     week_releases = Counter()
-    week_authors = {dt: set() for dt in grid}  # For unique contributors calculation
+    week_authors = {dt: set() for dt in grid}
 
-    # Bucket Commits
     for ts in commit_timestamps:
         dt = datetime.fromtimestamp(ts, timezone.utc)
         wk = week_start_sunday_unix(dt)
         week_commits[wk] += 1
 
-    # Bucket Authors (for Contributors feature)
     for ts, email in commit_authors:
         dt = datetime.fromtimestamp(ts, timezone.utc)
         wk_ts = week_start_sunday_unix(dt)
-        # Convert back to grid timestamp key match
         wk_dt = pd.Timestamp(wk_ts, unit="s", tz="UTC")
         if wk_dt in week_authors:
             week_authors[wk_dt].add(email)
 
-    # Bucket Issues
     for ts in issue_closed_timestamps:
         dt = datetime.fromtimestamp(ts, timezone.utc)
         wk = week_start_sunday_unix(dt)
         week_issues[wk] += 1
 
-    # Bucket Releases
     for ts in release_timestamps:
         dt = datetime.fromtimestamp(ts, timezone.utc)
         wk = week_start_sunday_unix(dt)
@@ -186,62 +156,48 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
     df = pd.DataFrame(index=grid)
     df["week_unix"] = df.index.astype(np.int64) // 10 ** 9
 
-    # Map raw counts to the weekly grid
     df["commits"] = df["week_unix"].map(week_commits).fillna(0)
     df["issues"] = df["week_unix"].map(week_issues).fillna(0)
     df["releases"] = df["week_unix"].map(week_releases).fillna(0)
 
-    # --- PHASE D: 8-Week Rolling Features (V2 Logic) ---
-    # 1. Numeric Sums (Rolling 8 weeks)
+    # [NEW] Calculate Weekly Contributors (Unique per week)
+    df["contributors"] = [len(week_authors.get(dt, set())) for dt in df.index]
+
+    # --- PHASE D: 8-Week Rolling ---
     df["commits_8w_sum"] = df["commits"].rolling(8, min_periods=1).sum()
     df["issues_closed_8w_count"] = df["issues"].rolling(8, min_periods=1).sum()
     df["releases_8w_count"] = df["releases"].rolling(8, min_periods=1).sum()
 
-    # 2. Contributors (Sliding Union of Sets over 8 weeks)
+    # Contributors (Sliding Union)
     u8 = []
     dq = deque()
     cnt = Counter()
-
     for dt in grid:
         cur_set = week_authors.get(dt, set())
         dq.append(cur_set)
         for author in cur_set:
             cnt[author] += 1
-
-        # Remove authors that fell out of the 8-week window
         if len(dq) > 8:
             out_set = dq.popleft()
             for author in out_set:
                 cnt[author] -= 1
                 if cnt[author] <= 0:
                     del cnt[author]
-
         u8.append(len(cnt))
-
     df["contributors_8w_unique"] = u8
 
-    # --- PHASE E: Prediction (Inference) ---
-    # Prepare Feature Matrix
+    # --- PHASE E: Prediction ---
     X = df[features_list].copy()
-
-    # Preprocessing: Log1p -> Robust/Standard Scaling
     X_log = np.log1p(X)
     X_z = (X_log - scaler_mean) / scaler_scale
-
-    # PCA Projection
     X_pca = np.dot(X_z, pca_comps.T)
-
-    # Apply Whitening if enabled in the trained model
     if pca_whiten:
         X_pca = X_pca / np.sqrt(pca_explained_var)
 
-    # KMeans Assignment (Nearest Centroid)
     dist_sq = np.sum((X_pca[:, np.newaxis, :] - kmeans_centroids[np.newaxis, :, :]) ** 2, axis=2)
     clusters = np.argmin(dist_sq, axis=1)
     stage_names = [label_map[c] for c in clusters]
 
-    # Apply "Dead" Rule (24 weeks of zero activity)
-    # This aligns with V1/V2 post-processing logic
     final_stages = []
     c_zero = 0
     for i in range(len(df)):
@@ -250,13 +206,10 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
             c_zero += 1
         else:
             c_zero = 0
-
         if c_zero >= 24:
             final_stages.append("Dead")
         else:
             final_stages.append(stage_names[i])
 
     df["stage_name"] = final_stages
-
-    # Return result with a clean date column for plotting
     return df.reset_index().rename(columns={"index": "week_date"})
