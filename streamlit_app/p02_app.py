@@ -10,7 +10,6 @@ from p01_inference import run_git_analysis
 st.set_page_config(page_title="Research Software Lifecycle Detector", layout="wide")
 
 # --- Colors (V2 Standard) ---
-# Dictionary order determines Legend order
 STAGE_COLORS = {
     "Baseline": "#f8b862",
     "Internal Development": "#38b48b",
@@ -47,7 +46,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.1.1")
+    st.caption("🚀 Version updated: 0.1.2)
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -106,24 +105,14 @@ def main():
                     vertical_spacing=0.04
                 )
 
-                # --- STEP 1: Add Dummy Traces for Stage Legend (Top) ---
-                # These traces are invisible on the plot but show up in the legend
-                for stage_name, color in STAGE_COLORS.items():
-                    fig.add_trace(go.Scatter(
-                        x=[None], y=[None],
-                        mode='markers',
-                        marker=dict(size=15, symbol='square', color=color),
-                        name=stage_name,
-                        showlegend=True  # Only these appear in the top legend
-                    ), row=1, col=1)
+                # --- REAL DATA FIRST (Ensures axis scales are correct) ---
 
-                # --- STEP 2: Real Metric Traces (Hidden from Legend) ---
                 # Row 1: Commits
                 fig.add_trace(go.Scatter(
                     x=df['week_date'], y=c8_s,
                     mode='lines', line=dict(color='#333333', width=2),
                     name='Commits', customdata=custom_data, hovertemplate=hover_template,
-                    showlegend=False  # Hide from top legend
+                    showlegend=False
                 ), row=1, col=1)
 
                 # Row 2: Contributors
@@ -150,7 +139,22 @@ def main():
                     showlegend=False
                 ), row=4, col=1)
 
-                # --- Inner Labels (Right Corner) ---
+                # --- LEGEND DUMMIES (Added AFTER real data) ---
+                # We use x=[min_date] and y=[0] to be safe, but set opacity=0
+                min_date = df['week_date'].min()
+
+                for stage_name, color in STAGE_COLORS.items():
+                    fig.add_trace(go.Scatter(
+                        x=[min_date], y=[0],  # Valid data point
+                        mode='markers',
+                        marker=dict(size=15, symbol='square', color=color),
+                        name=stage_name,
+                        showlegend=True,
+                        opacity=0,  # Invisible on plot
+                        hoverinfo='skip'  # No hover
+                    ), row=1, col=1)
+
+                # --- Inner Labels ---
                 labels = [
                     (1, "Commits (8w)", "#333333"),
                     (2, "Contributors (8w)", "#1f77b4"),
@@ -183,8 +187,7 @@ def main():
                             row=row_idx, col=1
                         )
 
-                # --- Layout: Legend Position ---
-                min_date = df['week_date'].min()
+                # --- Layout ---
                 max_date = df['week_date'].max()
 
                 fig.update_layout(
@@ -194,12 +197,14 @@ def main():
                     template="plotly_white",
                     paper_bgcolor="white",
                     plot_bgcolor="white",
-                    margin=dict(l=60, r=40, t=100, b=60),  # Increase top margin for legend
-                    showlegend=True,  # Enable Legend
+                    # INCREASED TOP MARGIN to 130 to fit the legend
+                    margin=dict(l=60, r=40, t=130, b=60),
+                    showlegend=True,
                     legend=dict(
-                        orientation="h",  # Horizontal
-                        yanchor="bottom", y=1.01,  # Position above the plot
-                        xanchor="center", x=0.5,  # Centered
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.05,  # Moved higher up
+                        xanchor="center", x=0.5,
                         font=dict(size=12, color="black"),
                         bgcolor="rgba(255,255,255,0.9)",
                         bordercolor="#e5e5e5", borderwidth=1
@@ -207,12 +212,14 @@ def main():
                 )
 
                 common_axis = dict(
-                    showgrid=False, zeroline=False,
+                    showgrid=False,
+                    zeroline=False,
                     showline=True, linecolor='black', linewidth=1,
                     mirror=True,
                     tickfont=dict(color='black', size=11),
                     range=[min_date, max_date]
                 )
+
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
