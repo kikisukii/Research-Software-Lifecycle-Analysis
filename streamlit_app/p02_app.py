@@ -25,6 +25,7 @@ STAGE_COLORS = {
 
 # --- Helper: Smart Random Picker ---
 def get_random_repo_url():
+    """Finds a valid GitHub URL from the local RSD CSV."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_files = glob.glob(os.path.join(current_dir, "01_rsd_*.csv"))
     if not csv_files:
@@ -54,9 +55,46 @@ def get_random_repo_url():
         return None
 
 
-# --- Helper: Stage Definitions ---
+# --- [NEW] Helper: Limitations & Notes (Top Section) ---
+def show_limitations():
+    """Displays important methodological notes and limitations."""
+    with st.expander("⚠️ Important Notes & Limitations (Read before use)", expanded=False):
+        st.markdown("""
+        **This tool uses unsupervised machine learning (K-Means Clustering) to explore lifecycle patterns.** Please be aware of the following limitations regarding data and algorithms:
+
+        #### 1. Dataset Bias & Scope
+        * [cite_start]**Academic Focus:** The model is trained on ~500 research software projects from the Research Software Directory (RSD)[cite: 145]. It is optimized for academic tools.
+        * **Not for Mega-Projects:** It may not accurately represent large-scale commercial software or massive open-source communities (e.g., Linux, React). [cite_start]Results for high-frequency, non-research projects may be biased[cite: 164].
+
+        #### 2. Data Sparsity & Short Lifecycles
+        * **Ad-hoc Nature:** Research software is often task-oriented. [cite_start]Many projects have very few commits (e.g., updated only once before publication)[cite: 115].
+        * [cite_start]**Limited Recognition:** For such **low-activity** projects, the algorithm might not detect complex transitions, often classifying the entire lifecycle simply as "Baseline" or "Dormant"[cite: 209].
+
+        #### 3. Non-Linear Lifecycles
+        * [cite_start]**Not a Progression:** Note that **not every project goes through every stage**[cite: 116].
+        * **Diverse Trajectories:** Our analysis shows many research tools never reach "Peak Activity" or "Maintenance". They often stay in "Baseline" until "Dead". [cite_start]This reflects the reality of research development, not an algorithm error[cite: 331].
+
+        #### 4. Visual Logic: 8-Week Rolling Window
+        * [cite_start]**Y-Axis Meaning:** The values shown (e.g., Commits) are the **cumulative sum over the past 8 weeks**, not weekly data[cite: 552].
+        * **Why?** This smooths out the "sporadic" nature of research commits to reveal **medium-term momentum**. [cite_start]Note that this introduces a slight visual lag[cite: 560].
+
+        #### 5. Visual Smoothing Artifacts
+        * **Curves vs. Colors:** The plotted lines undergo additional smoothing (Window=3) for visual clarity. You might notice slight misalignments between curve inflection points and background color changes. 
+        * [cite_start]**Check Data:** For precise numbers, please always refer to the **"Raw Data"** table at the bottom[cite: 572].
+
+        #### 6. Interpreting Clusters (Relative Definitions)
+        * [cite_start]**Feature-Driven:** Stage names are based on clustering feature distributions[cite: 61].
+        * **Why do some stages look similar?** Some stages may look similar in Commits but differ in **other signals**:
+            * **Baseline:** Routine, low-volume development (Low commits, almost zero Issue interaction).
+            * [cite_start]**Maintenance:** Distinct signs of maintenance (**High Issue activity** for bug fixing, but no new Feature Releases)[cite: 366].
+            * [cite_start]**Dormant:** Alive but inactive (distinct from Dead)[cite: 423].
+        """)
+
+
+# --- Helper: Stage Definitions (Moved to Bottom) ---
 def show_stage_definitions():
-    with st.expander("📖 How to interpret the stages? (Click to expand)"):
+    # Renamed title to be less definitive
+    with st.expander("📖 Stage Descriptions (Click to expand)"):
         st.markdown("""
         <style>
             .stage-row td { padding-bottom: 5px; vertical-align: top; }
@@ -123,7 +161,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.5")
+    st.caption("🚀 Version updated: 0.2.6")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -143,17 +181,29 @@ def main():
         else:
             st.toast("⚠️ Could not find a valid repo.", icon="❌")
 
+    # --- SECTION 1: LIMITATIONS (Top) ---
+    show_limitations()
+    st.markdown("---")  # Divider line
+
+    # --- SECTION 2: INPUT ---
     col1, col2, col3 = st.columns([5, 1, 1])
     with col1:
-        repo_url = st.text_input("GitHub URL", placeholder="https://github.com/owner/repo", key="repo_url_input",
-                                 label_visibility="collapsed")
+        repo_url = st.text_input(
+            "GitHub URL",
+            placeholder="https://github.com/owner/repo",
+            key="repo_url_input",
+            label_visibility="collapsed"
+        )
     with col2:
         manual_run = st.button("🚀 Analyze", type="primary", use_container_width=True)
     with col3:
         st.button("🎲 Random", on_click=pick_random_and_run, use_container_width=True, help="Auto-pick and analyze")
 
+    # --- SECTION 3: STAGE DESCRIPTIONS (Moved Here) ---
+    # Placed right after buttons so it's close to the generated chart
     show_stage_definitions()
 
+    # --- LOGIC ---
     should_run = manual_run or (st.session_state.trigger_auto_analyze and repo_url)
 
     if should_run:
@@ -252,27 +302,24 @@ def main():
 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # --- RAW DATA TABLE ---
                 with st.expander("View Raw Data"):
                     df_display = df.copy()
                     df_display.rename(columns={
                         "commits": "commits_weekly",
                         "issues": "issues_weekly",
                         "releases": "releases_weekly",
-                        "contributors": "contributors_weekly"  # [NEW] Rename the new column
+                        "contributors": "contributors_weekly"
                     }, inplace=True)
 
-                    # Calculate Integers for Display
                     df_display['commits_8w'] = raw_c
                     df_display['contributors_8w'] = raw_u
                     df_display['issues_8w'] = raw_i
                     df_display['releases_8w'] = raw_r
 
-                    # Strict Order: Date -> Weekly/8w Pairs -> Stage
                     cols_to_show = [
                         "week_date",
                         "commits_weekly", "commits_8w",
-                        "contributors_weekly", "contributors_8w",  # [NEW] Now we have both!
+                        "contributors_weekly", "contributors_8w",
                         "issues_weekly", "issues_8w",
                         "releases_weekly", "releases_8w",
                         "stage_name"
