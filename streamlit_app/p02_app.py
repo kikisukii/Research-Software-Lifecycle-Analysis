@@ -182,8 +182,7 @@ def main():
             # --- UI LAYOUT PREPARATION ---
             st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
 
-            # [CRITICAL] Create an empty container AT THE TOP (below title)
-            # This reserves space for the messages, but we won't fill it yet.
+            # Placeholder for top messages
             msg_container = st.container()
 
             # --- STEP 2: Visualization ---
@@ -266,13 +265,21 @@ def main():
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
-                # [ACTION 1] Fill the top container with messages NOW (Success!)
+                # [ACTION 1] Show messages at the top container
                 with msg_container:
                     st.success(f"Analysis complete! Weeks: {len(df)}")
                     st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
 
-                # [ACTION 2] Render the chart BELOW the container
+                # [ACTION 2] Show chart
                 st.plotly_chart(fig, use_container_width=True)
 
-                # Raw Data at bottom
-                with st.expander
+                # 4. Expander at bottom
+                with st.expander("View Raw Data"):
+                    st.dataframe(df)
+
+        except Exception as e:
+            st.error(f"Analysis failed: {str(e)}")
+
+
+if __name__ == "__main__":
+    main()
