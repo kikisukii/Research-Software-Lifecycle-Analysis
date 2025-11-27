@@ -21,6 +21,23 @@ STAGE_COLORS = {
 }
 
 
+# --- Helper: Stage Definitions (Rich Text) ---
+def show_stage_definitions():
+    """Displays an expander with detailed stage definitions."""
+    with st.expander("📖 How to interpret the stages? (Click to expand)"):
+        st.markdown("""
+        The model identifies 6+1 distinct lifecycle phases based on **Commits**, **Contributors**, **Issues**, and **Releases** (8-week rolling):
+
+        * <span style='color:#e9546b'>■</span> **Peak Activity**: High intensity & delivery. All metrics are high.
+        * <span style='color:#38b48b'>■</span> **Internal Development**: High code volume (commits), but zero external interaction (no issues/releases).
+        * <span style='color:#9d5b8b'>■</span> **Release Phase**: Stable cadence. High frequency of releases with moderate coding activity.
+        * <span style='color:#89c3eb'>■</span> **Maintenance**: **Issues-driven**. High issue activity (bug fixing) but low/no new feature releases.
+        * <span style='color:#f8b862'>■</span> **Baseline**: Low-volume, small team (often solo). The "normal state" for many research tools.
+        * <span style='color:#9ea1a3'>■</span> **Dormant**: Near-zero activity, but not yet dead (occasional updates).
+        * <span style='color:#383c3c'>■</span> **Dead**: No activity (commits/releases) for >24 consecutive weeks.
+        """, unsafe_allow_html=True)
+
+
 def build_segments(df):
     """Merge consecutive weeks with the same stage."""
     if df.empty: return []
@@ -46,8 +63,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    # --- Version Tag ---
-    st.caption("🚀 Version updated: 0.1.3")
+    st.caption("🚀 Version updated: 0.1.4")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -55,6 +71,7 @@ def main():
 
     token = st.secrets["GITHUB_TOKEN"]
 
+    # --- 1. Input Section ---
     col1, col2 = st.columns([3, 1])
     with col1:
         repo_url = st.text_input("GitHub URL", placeholder="https://github.com/owner/repo")
@@ -63,10 +80,13 @@ def main():
         st.write("")
         run_btn = st.button("🚀 Analyze", type="primary")
 
+    # --- 2. Stage Definitions (Placed right after input for visibility) ---
+    show_stage_definitions()
+
+    # --- 3. Analysis ---
     if run_btn and repo_url:
         with st.spinner("Fetching & Analyzing (Git Clone + API)..."):
             try:
-                # 1. Inference
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 model_path = os.path.join(current_dir, "model_bundle_v2.pkl")
                 df = run_git_analysis(repo_url, model_path, token)
@@ -84,9 +104,7 @@ def main():
                 raw_i = df['issues_closed_8w_count'].fillna(0).astype(int)
                 raw_r = df['releases_8w_count'].fillna(0).astype(int)
 
-                custom_data = np.stack((
-                    df['stage_name'], raw_c, raw_u, raw_i, raw_r
-                ), axis=-1)
+                custom_data = np.stack((df['stage_name'], raw_c, raw_u, raw_i, raw_r), axis=-1)
 
                 hover_template = (
                         "<b>%{x|%b %d, %Y}</b><br>" +
@@ -100,132 +118,76 @@ def main():
                 )
 
                 # --- Visualization ---
+
+                # [FIX] Use Streamlit Subheader for Title (Perfect Alignment)
+                st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
+
                 fig = make_subplots(
                     rows=4, cols=1,
                     shared_xaxes=True,
                     vertical_spacing=0.04
                 )
 
-                # --- REAL DATA TRACES ---
-                # Row 1: Commits
-                fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=c8_s,
-                    mode='lines', line=dict(color='#333333', width=2),
-                    name='Commits', customdata=custom_data, hovertemplate=hover_template,
-                    showlegend=False
-                ), row=1, col=1)
+                # --- Traces ---
+                fig.add_trace(go.Scatter(x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
+                                         name='Commits', customdata=custom_data, hovertemplate=hover_template,
+                                         showlegend=False), row=1, col=1)
+                fig.add_trace(go.Scatter(x=df['week_date'], y=u8_s, mode='lines', line=dict(color='#1f77b4', width=2),
+                                         name='Contributors', customdata=custom_data, hovertemplate=hover_template,
+                                         showlegend=False), row=2, col=1)
+                fig.add_trace(go.Scatter(x=df['week_date'], y=i8_s, mode='lines', line=dict(color='#ff7f0e', width=2),
+                                         name='Issues', customdata=custom_data, hovertemplate=hover_template,
+                                         showlegend=False), row=3, col=1)
+                fig.add_trace(go.Scatter(x=df['week_date'], y=r8_s, mode='lines', line=dict(color='#9467bd', width=2),
+                                         name='Releases', customdata=custom_data, hovertemplate=hover_template,
+                                         showlegend=False), row=4, col=1)
 
-                # Row 2: Contributors
-                fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=u8_s,
-                    mode='lines', line=dict(color='#1f77b4', width=2),
-                    name='Contributors', customdata=custom_data, hovertemplate=hover_template,
-                    showlegend=False
-                ), row=2, col=1)
-
-                # Row 3: Issues
-                fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=i8_s,
-                    mode='lines', line=dict(color='#ff7f0e', width=2),
-                    name='Issues', customdata=custom_data, hovertemplate=hover_template,
-                    showlegend=False
-                ), row=3, col=1)
-
-                # Row 4: Releases
-                fig.add_trace(go.Scatter(
-                    x=df['week_date'], y=r8_s,
-                    mode='lines', line=dict(color='#9467bd', width=2),
-                    name='Releases', customdata=custom_data, hovertemplate=hover_template,
-                    showlegend=False
-                ), row=4, col=1)
-
-                # --- LEGEND DUMMIES (Corrected) ---
-                # Use x=[None] so nothing is drawn on plot,
-                # but opacity=1 so the legend icon is fully visible.
+                # --- Legend Dummies ---
+                min_date = df['week_date'].min()
                 for stage_name, color in STAGE_COLORS.items():
-                    fig.add_trace(go.Scatter(
-                        x=[None], y=[None],  # No data on plot
-                        mode='markers',
-                        marker=dict(size=10, symbol='square', color=color),
-                        name=stage_name,
-                        showlegend=True,
-                        opacity=1,  # Visible in Legend!
-                        hoverinfo='skip'
-                    ), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=[min_date], y=[0], mode='markers',
+                                             marker=dict(size=10, symbol='square', color=color), name=stage_name,
+                                             showlegend=True, opacity=1, hoverinfo='skip'), row=1, col=1)
 
                 # --- Inner Labels ---
-                labels = [
-                    (1, "Commits (8w)", "#333333"),
-                    (2, "Contributors (8w)", "#1f77b4"),
-                    (3, "Issues Closed (8w)", "#ff7f0e"),
-                    (4, "Releases (8w)", "#9467bd")
-                ]
+                labels = [(1, "Commits (8w)", "#333333"), (2, "Contributors (8w)", "#1f77b4"),
+                          (3, "Issues Closed (8w)", "#ff7f0e"), (4, "Releases (8w)", "#9467bd")]
                 for row, text, color in labels:
                     y_ref = "y domain" if row == 1 else f"y{row} domain"
-                    fig.add_annotation(
-                        text=f"<b><span style='color:{color}; font-size:20px'>—</span> {text}</b>",
-                        showarrow=False,
-                        x=0.995, y=0.96,
-                        xref="x domain", yref=y_ref,
-                        align="right",
-                        bgcolor="rgba(255,255,255,0.8)",
-                        bordercolor="black", borderwidth=1, borderpad=4,
-                        font=dict(color="black", size=12)
-                    )
+                    fig.add_annotation(text=f"<b><span style='color:{color}; font-size:20px'>—</span> {text}</b>",
+                                       showarrow=False, x=0.995, y=0.96, xref="x domain", yref=y_ref, align="right",
+                                       bgcolor="rgba(255,255,255,0.8)", bordercolor="black", borderwidth=1, borderpad=4,
+                                       font=dict(color="black", size=12))
 
-                # --- Background Colors ---
+                # --- Backgrounds ---
                 segments = build_segments(df)
                 for row_idx in range(1, 5):
                     for start, end, stage in segments:
-                        fig.add_vrect(
-                            x0=start, x1=end,
-                            fillcolor=STAGE_COLORS.get(stage, "#eee"),
-                            opacity=0.4,
-                            layer="below",
-                            line_width=0,
-                            row=row_idx, col=1
-                        )
+                        fig.add_vrect(x0=start, x1=end, fillcolor=STAGE_COLORS.get(stage, "#eee"), opacity=0.4,
+                                      layer="below", line_width=0, row=row_idx, col=1)
 
                 # --- Layout ---
-                min_date = df['week_date'].min()
                 max_date = df['week_date'].max()
-
                 fig.update_layout(
-                    title=dict(text=f"Lifecycle Timeline (v2): {repo_url}", font=dict(color="black", size=18)),
+                    # [FIX] Removed Plotly Title, using Streamlit header instead
                     height=1000,
                     hovermode="x",
                     template="plotly_white",
                     paper_bgcolor="white",
                     plot_bgcolor="white",
-                    # Margin: Top=120 gives space for Title + Legend
-                    margin=dict(l=60, r=40, t=120, b=60),
+                    margin=dict(l=60, r=40, t=40, b=60),  # Less top margin needed now
                     showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,  # Slightly above the first subplot
-                        xanchor="left",
-                        x=0,  # Aligned to the Left
-                        font=dict(size=12, color="black"),
-                        bgcolor="rgba(255,255,255,0.9)",
-                        bordercolor="#e5e5e5", borderwidth=1
-                    )
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
+                                font=dict(size=12, color="black"), bgcolor="rgba(255,255,255,0.9)",
+                                bordercolor="#e5e5e5", borderwidth=1)
                 )
 
-                common_axis = dict(
-                    showgrid=False,
-                    zeroline=False,
-                    showline=True, linecolor='black', linewidth=1,
-                    mirror=True,
-                    tickfont=dict(color='black', size=11),
-                    range=[min_date, max_date]
-                )
-
+                common_axis = dict(showgrid=False, zeroline=False, showline=True, linecolor='black', linewidth=1,
+                                   mirror=True, tickfont=dict(color='black', size=11), range=[min_date, max_date])
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
                 st.plotly_chart(fig, use_container_width=True)
-
                 with st.expander("View Raw Data"):
                     st.dataframe(df)
 
