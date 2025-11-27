@@ -46,8 +46,8 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    # --- FIXED VERSION TAG ---
-    st.caption("🚀 Version updated: 0.1.2")
+    # --- Version Tag ---
+    st.caption("🚀 Version updated: 0.1.3")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -106,8 +106,7 @@ def main():
                     vertical_spacing=0.04
                 )
 
-                # --- REAL DATA FIRST ---
-
+                # --- REAL DATA TRACES ---
                 # Row 1: Commits
                 fig.add_trace(go.Scatter(
                     x=df['week_date'], y=c8_s,
@@ -140,16 +139,17 @@ def main():
                     showlegend=False
                 ), row=4, col=1)
 
-                # --- LEGEND DUMMIES (Added AFTER) ---
-                min_date = df['week_date'].min()
+                # --- LEGEND DUMMIES (Corrected) ---
+                # Use x=[None] so nothing is drawn on plot,
+                # but opacity=1 so the legend icon is fully visible.
                 for stage_name, color in STAGE_COLORS.items():
                     fig.add_trace(go.Scatter(
-                        x=[min_date], y=[0],
+                        x=[None], y=[None],  # No data on plot
                         mode='markers',
-                        marker=dict(size=15, symbol='square', color=color),
+                        marker=dict(size=10, symbol='square', color=color),
                         name=stage_name,
                         showlegend=True,
-                        opacity=0,
+                        opacity=1,  # Visible in Legend!
                         hoverinfo='skip'
                     ), row=1, col=1)
 
@@ -187,6 +187,7 @@ def main():
                         )
 
                 # --- Layout ---
+                min_date = df['week_date'].min()
                 max_date = df['week_date'].max()
 
                 fig.update_layout(
@@ -196,13 +197,15 @@ def main():
                     template="plotly_white",
                     paper_bgcolor="white",
                     plot_bgcolor="white",
-                    margin=dict(l=60, r=40, t=130, b=60),
+                    # Margin: Top=120 gives space for Title + Legend
+                    margin=dict(l=60, r=40, t=120, b=60),
                     showlegend=True,
                     legend=dict(
                         orientation="h",
                         yanchor="bottom",
-                        y=1.05,
-                        xanchor="center", x=0.5,
+                        y=1.02,  # Slightly above the first subplot
+                        xanchor="left",
+                        x=0,  # Aligned to the Left
                         font=dict(size=12, color="black"),
                         bgcolor="rgba(255,255,255,0.9)",
                         bordercolor="#e5e5e5", borderwidth=1
