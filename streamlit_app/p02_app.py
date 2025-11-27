@@ -25,18 +25,14 @@ STAGE_COLORS = {
 
 # --- Helper: Smart Random Picker ---
 def get_random_repo_url():
-    """Finds a valid GitHub URL from the local RSD CSV."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_files = glob.glob(os.path.join(current_dir, "01_rsd_*.csv"))
-
     if not csv_files:
         st.error("❌ System Error: No RSD data file found.")
         return None
-
     try:
         df = pd.read_csv(csv_files[0])
         valid_pool = []
-
         if "repo_urls" in df.columns:
             for item in df["repo_urls"].dropna():
                 for url in str(item).split(";"):
@@ -48,15 +44,11 @@ def get_random_repo_url():
                 item = str(item).strip()
                 if "/" in item:
                     valid_pool.append(f"https://github.com/{item}")
-
         valid_pool = list(set(valid_pool))
-
         if not valid_pool:
             st.warning("⚠️ No valid GitHub URLs found in dataset.")
             return None
-
         return random.choice(valid_pool)
-
     except Exception as e:
         st.error(f"❌ Error reading data file: {e}")
         return None
@@ -131,7 +123,7 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.2.3")
+    st.caption("🚀 Version updated: 0.2.4")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -181,22 +173,23 @@ def main():
 
             # --- UI LAYOUT PREPARATION ---
             st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
-
-            # Placeholder for top messages
             msg_container = st.container()
 
             # --- STEP 2: Visualization ---
             with st.spinner("Generating visualization..."):
+                # A. Data Prep (Smoothing)
                 c8_s = smooth_series(df['commits_8w_sum'])
                 u8_s = smooth_series(df['contributors_8w_unique'])
                 i8_s = smooth_series(df['issues_closed_8w_count'])
                 r8_s = df['releases_8w_count']
 
+                # B. Data Prep (Raw Integers for Hover & Table)
                 raw_c = df['commits_8w_sum'].fillna(0).astype(int)
                 raw_u = df['contributors_8w_unique'].fillna(0).astype(int)
                 raw_i = df['issues_closed_8w_count'].fillna(0).astype(int)
                 raw_r = df['releases_8w_count'].fillna(0).astype(int)
 
+                # C. Custom Data for Hover (Strict Order: Commits, Contribs, Issues, Releases)
                 custom_data = np.stack((df['stage_name'], raw_c, raw_u, raw_i, raw_r), axis=-1)
 
                 hover_template = (
@@ -212,27 +205,46 @@ def main():
 
                 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
-                fig.add_trace(go.Scatter(x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
-                                         name='Commits', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=1, col=1)
-                fig.add_trace(go.Scatter(x=df['week_date'], y=u8_s, mode='lines', line=dict(color='#1f77b4', width=2),
-                                         name='Contributors', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=2, col=1)
-                fig.add_trace(go.Scatter(x=df['week_date'], y=i8_s, mode='lines', line=dict(color='#ff7f0e', width=2),
-                                         name='Issues', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=3, col=1)
-                fig.add_trace(go.Scatter(x=df['week_date'], y=r8_s, mode='lines', line=dict(color='#9467bd', width=2),
-                                         name='Releases', customdata=custom_data, hovertemplate=hover_template,
-                                         showlegend=False), row=4, col=1)
+                # --- TRACES (Strict Order: Top to Bottom) ---
 
+                # Row 1: Commits
+                fig.add_trace(go.Scatter(
+                    x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
+                    name='Commits', customdata=custom_data, hovertemplate=hover_template, showlegend=False
+                ), row=1, col=1)
+
+                # Row 2: Contributors
+                fig.add_trace(go.Scatter(
+                    x=df['week_date'], y=u8_s, mode='lines', line=dict(color='#1f77b4', width=2),
+                    name='Contributors', customdata=custom_data, hovertemplate=hover_template, showlegend=False
+                ), row=2, col=1)
+
+                # Row 3: Issues
+                fig.add_trace(go.Scatter(
+                    x=df['week_date'], y=i8_s, mode='lines', line=dict(color='#ff7f0e', width=2),
+                    name='Issues', customdata=custom_data, hovertemplate=hover_template, showlegend=False
+                ), row=3, col=1)
+
+                # Row 4: Releases
+                fig.add_trace(go.Scatter(
+                    x=df['week_date'], y=r8_s, mode='lines', line=dict(color='#9467bd', width=2),
+                    name='Releases', customdata=custom_data, hovertemplate=hover_template, showlegend=False
+                ), row=4, col=1)
+
+                # --- DUMMY LEGEND ---
                 min_date = df['week_date'].min()
                 for stage_name, color in STAGE_COLORS.items():
                     fig.add_trace(go.Scatter(x=[min_date], y=[0], mode='markers',
                                              marker=dict(size=10, symbol='square', color=color), name=stage_name,
                                              showlegend=True, opacity=1, hoverinfo='skip'), row=1, col=1)
 
-                labels = [(1, "Commits (8w)", "#333333"), (2, "Contributors (8w)", "#1f77b4"),
-                          (3, "Issues Closed (8w)", "#ff7f0e"), (4, "Releases (8w)", "#9467bd")]
+                # --- INNER LABELS (Strict Order) ---
+                labels = [
+                    (1, "Commits (8w)", "#333333"),
+                    (2, "Contributors (8w)", "#1f77b4"),
+                    (3, "Issues Closed (8w)", "#ff7f0e"),
+                    (4, "Releases (8w)", "#9467bd")
+                ]
                 for row, text, color in labels:
                     y_ref = "y domain" if row == 1 else f"y{row} domain"
                     fig.add_annotation(text=f"<b><span style='color:{color}; font-size:20px'>—</span> {text}</b>",
@@ -240,6 +252,7 @@ def main():
                                        bgcolor="rgba(255,255,255,0.8)", bordercolor="black", borderwidth=1, borderpad=4,
                                        font=dict(color="black", size=12))
 
+                # --- BACKGROUNDS ---
                 segments = build_segments(df)
                 for row_idx in range(1, 5):
                     for start, end, stage in segments:
@@ -265,17 +278,32 @@ def main():
                 fig.update_xaxes(**common_axis)
                 fig.update_yaxes(**common_axis)
 
-                # [ACTION 1] Show messages at the top container
                 with msg_container:
                     st.success(f"Analysis complete! Weeks: {len(df)}")
                     st.info("⬇️ Scroll down to the bottom to inspect the **Raw Data** table.")
 
-                # [ACTION 2] Show chart
                 st.plotly_chart(fig, use_container_width=True)
 
-                # 4. Expander at bottom
+                # --- RAW DATA TABLE (Strict Column Order) ---
                 with st.expander("View Raw Data"):
-                    st.dataframe(df)
+                    # [FIX] Create a view with specific column order matching V2
+                    # Create readable columns from the raw integers calculated above
+                    df_display = df.copy()
+                    df_display['commits_8w'] = raw_c
+                    df_display['contributors_8w'] = raw_u
+                    df_display['issues_8w'] = raw_i
+                    df_display['releases_8w'] = raw_r
+
+                    # Select and Order Columns
+                    cols_to_show = [
+                        "week_date",
+                        "stage_name",
+                        "commits_8w",
+                        "contributors_8w",
+                        "issues_8w",
+                        "releases_8w"
+                    ]
+                    st.dataframe(df_display[cols_to_show])
 
         except Exception as e:
             st.error(f"Analysis failed: {str(e)}")
