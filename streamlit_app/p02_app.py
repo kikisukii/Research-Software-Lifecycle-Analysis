@@ -40,13 +40,14 @@ def build_segments(df):
 
 
 def smooth_series(series, window=3):
-    """V2 Smoothing logic (Causes decimals, which is expected)."""
+    """V2 Smoothing logic."""
     return series.rolling(window=window, center=True, min_periods=1).mean()
 
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-    st.caption("🚀 Version updated: 0.0.8")
+    # --- Update Version Tag ---
+    st.caption("🚀 Version updated: 0.0.9")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
@@ -73,13 +74,11 @@ def main():
                 st.success(f"Analysis complete! Weeks: {len(df)}")
 
                 # --- Data Prep ---
-                # Smooth curves (Note: this creates decimals)
                 c8_s = smooth_series(df['commits_8w_sum'])
                 u8_s = smooth_series(df['contributors_8w_unique'])
                 i8_s = smooth_series(df['issues_closed_8w_count'])
-                r8_s = df['releases_8w_count']  # No smoothing for releases
+                r8_s = df['releases_8w_count']
 
-                # Prepare Custom Data for Hover (All info in every hover)
                 custom_data = np.stack((
                     df['stage_name'],
                     c8_s.round(1),
@@ -92,15 +91,14 @@ def main():
                         "<b>Week:</b> %{x|%Y-%m-%d}<br>" +
                         "<b>Stage:</b> %{customdata[0]}<br>" +
                         "<br>" +
-                        "Commits (Avg): %{customdata[1]}<br>" +
-                        "Contributors (Avg): %{customdata[2]}<br>" +
-                        "Issues (Avg): %{customdata[3]}<br>" +
+                        "Commits: %{customdata[1]}<br>" +
+                        "Contributors: %{customdata[2]}<br>" +
+                        "Issues: %{customdata[3]}<br>" +
                         "Releases: %{customdata[4]}" +
                         "<extra></extra>"
                 )
 
                 # --- Visualization ---
-                # REMOVED subplot_titles to clean up the top
                 fig = make_subplots(
                     rows=4, cols=1,
                     shared_xaxes=True,
@@ -128,33 +126,32 @@ def main():
                     name='Issues', customdata=custom_data, hovertemplate=hover_template
                 ), row=3, col=1)
 
-                # Row 4: Releases (Solid Line)
+                # Row 4: Releases
                 fig.add_trace(go.Scatter(
                     x=df['week_date'], y=r8_s,
                     mode='lines', line=dict(color='#9467bd', width=2),
                     name='Releases', customdata=custom_data, hovertemplate=hover_template
                 ), row=4, col=1)
 
-                # --- Inner Labels (Annotations instead of Titles) ---
-                # This puts the label INSIDE the box, top-right, colored
+                # --- Inner Labels (FIXED Loop) ---
                 labels = [
                     (1, "Commits (8w)", "#333333"),
                     (2, "Contributors (8w)", "#1f77b4"),
                     (3, "Issues Closed (8w)", "#ff7f0e"),
                     (4, "Releases (8w)", "#9467bd")
                 ]
+
                 for row, text, color in labels:
+                    # Determine Y-axis reference based on row number
+                    # Row 1 is 'y domain', Row 2 is 'y2 domain', etc.
+                    y_ref = "y domain" if row == 1 else f"y{row} domain"
+
                     fig.add_annotation(
-                        xref=f"x{row} domain" if row == 1 else "x domain",  # simple domain ref
-                        yref=f"y{row} domain" if row == 1 else f"y{row} domain",
-                        # For subplots, referencing domains can be tricky in loop, using paper ref relative to subplot
-                        # Easier method: use 'xref'='paper' is hard.
-                        # Let's use standard add_annotation to the specific subplot row/col
                         text=f"<b>{text}</b>",
                         showarrow=False,
-                        x=0.99, y=0.95,  # Top Right corner
-                        xref=f"x{row} domain" if row > 1 else "x domain",
-                        yref=f"y{row} domain" if row > 1 else "y domain",
+                        x=0.99, y=0.90,  # Top Right corner
+                        xref="x domain",  # Use shared X domain
+                        yref=y_ref,  # Use specific Y domain
                         font=dict(color=color, size=14)
                     )
 
@@ -167,12 +164,11 @@ def main():
                             fillcolor=STAGE_COLORS.get(stage, "#eee"),
                             opacity=0.4,
                             layer="below",
-                            line_width=0,  # No border for color blocks
+                            line_width=0,
                             row=row_idx, col=1
                         )
 
-                # --- Layout: Tight & Clean ---
-                # Lock X range to exact data limits (Removes side gaps)
+                # --- Layout ---
                 min_date = df['week_date'].min()
                 max_date = df['week_date'].max()
 
@@ -183,18 +179,18 @@ def main():
                     template="plotly_white",
                     paper_bgcolor="white",
                     plot_bgcolor="white",
-                    margin=dict(l=60, r=40, t=60, b=60),  # Reduced top margin since titles are gone
+                    margin=dict(l=60, r=40, t=60, b=60),
                     showlegend=False
                 )
 
-                # Axis Styling: NO GRID (Clean Look)
+                # Axis Styling: NO GRID
                 common_axis = dict(
-                    showgrid=False,  # CRITICAL: Removes all internal grid lines
+                    showgrid=False,
                     zeroline=False,
-                    showline=True, linecolor='black', linewidth=1,  # Outer Frame
-                    mirror=True,  # Frame on all sides
+                    showline=True, linecolor='black', linewidth=1,
+                    mirror=True,
                     tickfont=dict(color='black', size=11),
-                    range=[min_date, max_date]  # CRITICAL: Forces "Tight Fit"
+                    range=[min_date, max_date]
                 )
 
                 fig.update_xaxes(**common_axis)
