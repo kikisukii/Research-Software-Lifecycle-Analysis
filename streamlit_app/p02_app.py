@@ -23,12 +23,9 @@ STAGE_COLORS = {
 }
 
 
-# --- Helper: Smart Random Picker (Filters for valid GitHub URLs first) ---
+# --- Helper: Smart Random Picker ---
 def get_random_repo_url():
-    """
-    Reads the local CSV, filters ONLY for rows with valid GitHub URLs,
-    and returns one random URL from this 'clean pool'.
-    """
+    """Finds a valid GitHub URL from the local RSD CSV."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_files = glob.glob(os.path.join(current_dir, "01_rsd_*.csv"))
 
@@ -40,30 +37,24 @@ def get_random_repo_url():
         df = pd.read_csv(csv_files[0])
         valid_pool = []
 
-        # Strategy 1: Check 'repo_urls' column (contains full URLs)
         if "repo_urls" in df.columns:
             for item in df["repo_urls"].dropna():
-                # Column might contain multiple URLs separated by ';'
                 for url in str(item).split(";"):
                     url = url.strip()
                     if "github.com" in url:
                         valid_pool.append(url)
-
-        # Strategy 2: Check 'github_owner_repo' column (backup)
         elif "github_owner_repo" in df.columns:
             for item in df["github_owner_repo"].dropna():
                 item = str(item).strip()
-                if "/" in item:  # Looks like "owner/repo"
+                if "/" in item:
                     valid_pool.append(f"https://github.com/{item}")
 
-        # Deduplicate
         valid_pool = list(set(valid_pool))
 
         if not valid_pool:
-            st.warning("⚠️ Data file found, but no valid GitHub URLs could be extracted.")
+            st.warning("⚠️ No valid GitHub URLs found in dataset.")
             return None
 
-        # Pick one from the clean pool
         return random.choice(valid_pool)
 
     except Exception as e:
@@ -71,7 +62,7 @@ def get_random_repo_url():
         return None
 
 
-# --- Helper: Stage Definitions (Table Layout) ---
+# --- Helper: Stage Definitions ---
 def show_stage_definitions():
     with st.expander("📖 How to interpret the stages? (Click to expand)"):
         st.markdown("""
@@ -140,45 +131,59 @@ def smooth_series(series, window=3):
 
 def main():
     st.title("🧬 Research Software Lifecycle Detector (Full v2)")
-
-    # --- Version Tag ---
-    st.caption("🚀 Version updated: 0.1.8")
+    st.caption("🚀 Version updated: 0.1.9")
 
     if "GITHUB_TOKEN" not in st.secrets:
         st.error("⚠️ GitHub Token missing in Secrets.")
         st.stop()
-
     token = st.secrets["GITHUB_TOKEN"]
 
-    # --- Session State for Input ---
+    # --- Init Session State ---
     if 'repo_url_input' not in st.session_state:
         st.session_state.repo_url_input = ""
 
-    # --- Callback: Smart Random ---
-    def pick_random():
+    # Magic Switch: If True, the app runs analysis immediately after reload
+    if 'trigger_auto_analyze' not in st.session_state:
+        st.session_state.trigger_auto_analyze = False
+
+    # --- Callback for Random Button ---
+    def pick_random_and_run():
         url = get_random_repo_url()
         if url:
             st.session_state.repo_url_input = url
+            # Turn on the switch!
+            st.session_state.trigger_auto_analyze = True
         else:
-            st.toast("Could not find a valid GitHub URL in the dataset.", icon="⚠️")
+            st.toast("⚠️ Could not find a valid repo.", icon="❌")
 
-    # --- UI Layout ---
-    col1, col2, col3 = st.columns([3, 0.6, 0.6])
+    # --- UI Layout: Compact Row ---
+    # col1: Input (Wide) | col2: Analyze | col3: Random
+    col1, col2, col3 = st.columns([5, 1, 1])
+
     with col1:
-        repo_url = st.text_input("GitHub URL", placeholder="https://github.com/owner/repo", key="repo_url_input")
+        repo_url = st.text_input(
+            "GitHub URL",
+            placeholder="https://github.com/owner/repo",
+            key="repo_url_input",
+            label_visibility="collapsed"  # Hide label to align with buttons
+        )
     with col2:
-        st.write("")
-        st.write("")
-        run_btn = st.button("🚀 Analyze", type="primary")
+        # Normal Analyze Button
+        manual_run = st.button("🚀 Analyze", type="primary", use_container_width=True)
     with col3:
-        st.write("")
-        st.write("")
-        st.button("🎲 Random", on_click=pick_random, help="Pick a valid repo from RSD data")
+        # Random Button triggers the callback
+        st.button("🎲 Random", on_click=pick_random_and_run, use_container_width=True, help="Auto-pick and analyze")
 
+    # Show definitions below input
     show_stage_definitions()
 
-    # --- Analysis ---
-    if run_btn and repo_url:
+    # --- Logic: Run if Button Clicked OR Auto-Trigger is ON ---
+    should_run = manual_run or (st.session_state.trigger_auto_analyze and repo_url)
+
+    if should_run:
+        # Important: Turn off the switch immediately so it doesn't re-run on next interaction
+        st.session_state.trigger_auto_analyze = False
+
         with st.spinner("Fetching & Analyzing..."):
             try:
                 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -187,7 +192,7 @@ def main():
 
                 st.success(f"Analysis complete! Weeks: {len(df)}")
 
-                # --- Visualization (V2 Perfect Replica) ---
+                # --- Visualization ---
                 c8_s = smooth_series(df['commits_8w_sum'])
                 u8_s = smooth_series(df['contributors_8w_unique'])
                 i8_s = smooth_series(df['issues_closed_8w_count'])
@@ -211,12 +216,10 @@ def main():
                         "<extra></extra>"
                 )
 
-                # Use Streamlit Subheader for Title Alignment
                 st.subheader(f"Lifecycle Timeline (v2): {repo_url}")
 
                 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04)
 
-                # Traces
                 fig.add_trace(go.Scatter(x=df['week_date'], y=c8_s, mode='lines', line=dict(color='#333333', width=2),
                                          name='Commits', customdata=custom_data, hovertemplate=hover_template,
                                          showlegend=False), row=1, col=1)
@@ -230,14 +233,12 @@ def main():
                                          name='Releases', customdata=custom_data, hovertemplate=hover_template,
                                          showlegend=False), row=4, col=1)
 
-                # Legend Dummies
                 min_date = df['week_date'].min()
                 for stage_name, color in STAGE_COLORS.items():
                     fig.add_trace(go.Scatter(x=[min_date], y=[0], mode='markers',
                                              marker=dict(size=10, symbol='square', color=color), name=stage_name,
                                              showlegend=True, opacity=1, hoverinfo='skip'), row=1, col=1)
 
-                # Inner Labels
                 labels = [(1, "Commits (8w)", "#333333"), (2, "Contributors (8w)", "#1f77b4"),
                           (3, "Issues Closed (8w)", "#ff7f0e"), (4, "Releases (8w)", "#9467bd")]
                 for row, text, color in labels:
@@ -247,14 +248,12 @@ def main():
                                        bgcolor="rgba(255,255,255,0.8)", bordercolor="black", borderwidth=1, borderpad=4,
                                        font=dict(color="black", size=12))
 
-                # Backgrounds
                 segments = build_segments(df)
                 for row_idx in range(1, 5):
                     for start, end, stage in segments:
                         fig.add_vrect(x0=start, x1=end, fillcolor=STAGE_COLORS.get(stage, "#eee"), opacity=0.4,
                                       layer="below", line_width=0, row=row_idx, col=1)
 
-                # Layout
                 max_date = df['week_date'].max()
                 fig.update_layout(
                     height=1000,
