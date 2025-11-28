@@ -124,7 +124,7 @@ def plot_one_8w(repo, df_repo: pd.DataFrame, outdir: Path):
 
     # 4. Plot Line (Style matched to V2) - Uses x_line (Mid-Week)
     # V2 uses dark grey line, lw=1.8
-    ax.plot(x_line, y_8w, lw=1.8, color='#333333', label="Commits (8-week rolling)")
+    ax.plot(x_line, y_8w, lw=1.8, color='#333333', label="Commits (8w rolling)")
 
     # Optional: Grid
     ax.grid(True, axis="y", alpha=0.3)
