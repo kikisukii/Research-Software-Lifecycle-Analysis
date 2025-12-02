@@ -2,6 +2,12 @@
 
 This repository contains the data processing pipeline for identifying research software life cycle phases using GitHub signals. The pipeline creates weekly aggregated features and applies unsupervised clustering (K-Means).
 
+[Try our web tool here](https://rsd-lifecycle-analysis.streamlit.app/)
+
+
+
+
+
 ## 📋 Prerequisites
 
 Before running the scripts, ensure you have the following installed:
