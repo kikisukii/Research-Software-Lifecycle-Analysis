@@ -12,6 +12,9 @@ Research software often lacks formal development oversight. This study proposes 
 The project implements a progressive experimental design:
 * **Phase I (v1 - Baseline):** A single-signal approach using **Commit Frequency** and **Momentum** ($M_{8/24}$).
 * **Phase II (v2 - Advanced):** A multi-signal approach (Commits, Contributors, Issues, Releases) utilizing **PCA** and **K-Means Clustering** ($K=6$) to capture complex evolution patterns.
+ 
+
+[Try the web tool here!](https://rsd-lifecycle-analysis.streamlit.app/)
 
 ##  Repository Structure
 
