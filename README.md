@@ -110,6 +110,8 @@ python v1/04_k_sweep_v1.py
 
 # 4. Training & Inference (K=4, Alpha=1.9 as per thesis)
 python v1/05_a_fit_kmeans_v1.py --k 4 --alpha 1.9
+#If you are running the codes by yourself, please put stage names in ``05_labeling_template_v1_20251124_162003_K4.json`` before running 05_b
+
 python v1/05_b_label_only_v1.py
 
 # 5. Visualization
@@ -131,6 +133,8 @@ python v2/04_select_k_v2.py
 
 # 4. Clustering & Mapping (Fit K=6)
 python v2/05a_cluster_and_profiles_v2.py
+
+#If you are running the codes by yourself, please check and change stage names in the ``CLUSTER_LABEL_MAP`` in 05b, since everytime cluster id might be different.
 python v2/05b_name_and_label_v2.py
 
 # 5. Visualization (Mid-week alignment)

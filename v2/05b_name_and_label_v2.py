@@ -69,6 +69,7 @@ assign = pd.merge(assign_raw, feat03[["repo", "week_unix"] + cols_to_add],
                   on=["repo", "week_unix"], how="left")
 
 # 4. MAPPING
+#PLEASE BE AWARE THAT IF YOU ARE RUNNING THE CODES BY YOURSELF, YOU NEED TO CHANGE THS PART ACCORDING TO THE RESULTS YOU GET FROM 05a.
 CLUSTER_LABEL_MAP = {
     3: "Peak Activity",
     1: "Internal Development",
