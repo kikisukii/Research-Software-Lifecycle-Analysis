@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-extra1_c_plot_repo_v1.py
+extra01_c_plot_repo_v1.py
 
 
 This one is for me to check how it shows on weekly.
@@ -25,7 +25,7 @@ Color Scheme (User Defined V3):
   - Dead:        Dark Charcoal (#383c3c)
 
 Usage:
-  python extra1_c_plot_repo_v1.py --sample 10
+  python extra01_c_plot_repo_v1.py --sample 10
 """
 
 import argparse
