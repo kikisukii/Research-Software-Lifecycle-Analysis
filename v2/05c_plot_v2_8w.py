@@ -27,14 +27,15 @@ D05_C = ROOT / "v2_data" / "05_c_viz"
 
 # ---------- config ----------
 # 1. Custom Colors
+# --- Colors (V2 Standard) ---
 STAGE_COLORS = {
-    "Baseline": "#f8b862",  # Orange-ish
-    "Internal Development": "#38b48b",  # Green-ish
-    "Release Phase": "#9d5b8b",  # Purple-ish
-    "Peak Activity": "#e9546b",  # Pink/Red
-    "Maintenance": "#89c3eb",  # Light Blue
-    "Dormant": "#9ea1a3",  # Grey
-    "Dead": "#383c3c",  # Dark Grey
+    "Baseline": "#f8b862",
+    "Internal Development": "#19448e", #"#38b48b"原来的绿色
+    "Release Phase": "#9d5b8b",
+    "Peak Activity": "#38b48b", ##e9546b 原来的珊瑚红
+    "Maintenance": "#89c3eb",
+    "Dormant": "#9ea1a3",
+    "Dead": "#383c3c",
 }
 
 # 2. Legend Order

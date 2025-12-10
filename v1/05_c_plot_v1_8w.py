@@ -38,13 +38,14 @@ OUTPUT_DIR = V1_DATA_ROOT / "05_c_viz_8w"
 STAMP_RE = re.compile(r"(\d{8}_\d{6})")
 
 # [CONFIG] Visuals - V1 Colors Mapped to V2 Palette
+# V1 Updated Color Scheme
 STAGE_COLOR = {
-    "Initial": "#f8b862",  # Matches V2 Baseline (Orange)
-    "Rising": "#38b48b",  # Matches V2 Internal Development (Green)
-    "Peak": "#e9546b",  # Matches V2 Peak Activity (Red/Pink)
-    "Maintenance": "#89c3eb",  # Matches V2 Maintenance (Blue)
-    "Low": "#9ea1a3",  # Matches V2 Dormant (Grey)
-    "Dead": "#383c3c",  # Matches V2 Dead (Dark)
+    "Initial": "#f8b862",      # Matches V2 Baseline (Orange)
+    "Rising": "#19448e",       # Matches V2 Internal Development (New Dark Blue)
+    "Peak": "#38b48b",         # Matches V2 Peak Activity (Recycled Green)
+    "Maintenance": "#89c3eb",  # Matches V2 Maintenance (Light Blue)
+    "Low": "#9ea1a3",          # Matches V2 Dormant (Grey)
+    "Dead": "#383c3c",         # Matches V2 Dead (Dark Grey)
 }
 
 # Define legend order for consistency
