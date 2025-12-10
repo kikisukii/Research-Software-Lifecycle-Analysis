@@ -10,6 +10,7 @@ def find_latest_data_file():
     """
     Automatically finds the latest '05a_cluster_assignments_v2_*.csv' file.
     Searches in standard relative paths and recursively in v2_data.
+    Please check the 'cluster_map' part to make sure the cluster id maps the phases names!!! It's not an automatic map
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -63,6 +64,7 @@ def main():
         return
 
     # --- 2. Map Stage Names ---
+    #Edit phases names here!!!!
     cluster_map = {
         0: "Dormant",
         1: "Internal Development",
