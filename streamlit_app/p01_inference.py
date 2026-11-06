@@ -153,15 +153,38 @@ def run_git_analysis(repo_url, model_bundle_path, github_token):
         week_releases[wk] += 1
 
     # Build DataFrame
-    df = pd.DataFrame(index=grid)
-    df["week_unix"] = df.index.astype(np.int64) // 10 ** 9
+df = pd.DataFrame(index=grid)
 
-    df["commits"] = df["week_unix"].map(week_commits).fillna(0)
-    df["issues"] = df["week_unix"].map(week_issues).fillna(0)
-    df["releases"] = df["week_unix"].map(week_releases).fillna(0)
+# IMPORTANT:
+# Do not assume Pandas datetime values are always stored in nanoseconds.
+# Pandas 3.x may use microsecond resolution, which would break
+# "astype(np.int64) // 10**9".
+# Convert each timestamp explicitly to Unix seconds instead.
+df["week_unix"] = np.array(
+    [int(ts.timestamp()) for ts in df.index],
+    dtype=np.int64
+)
 
-    # [NEW] Calculate Weekly Contributors (Unique per week)
-    df["contributors"] = [len(week_authors.get(dt, set())) for dt in df.index]
+df["commits"] = df["week_unix"].map(week_commits).fillna(0)
+df["issues"] = df["week_unix"].map(week_issues).fillna(0)
+df["releases"] = df["week_unix"].map(week_releases).fillna(0)
+
+# Calculate Weekly Contributors (Unique per week)
+df["contributors"] = [
+    len(week_authors.get(dt, set()))
+    for dt in df.index
+]
+
+# Safety check:
+# Contributors come from the same git commits as commit counts.
+# Therefore, contributors > 0 together with commits == 0 indicates
+# a timestamp aggregation/alignment problem.
+if df["contributors"].sum() > 0 and df["commits"].sum() == 0:
+    raise RuntimeError(
+        "Data integrity error: contributors were detected, "
+        "but aggregated commit count is zero. "
+        "Please check weekly timestamp alignment."
+    )
 
     # --- PHASE D: 8-Week Rolling ---
     df["commits_8w_sum"] = df["commits"].rolling(8, min_periods=1).sum()
